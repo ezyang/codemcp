@@ -643,6 +643,10 @@ async def edit_file_content(
         Files must be tracked in the git repository before they can be modified.
 
     """
+    # Prevent editing codemcp.toml for security reasons
+    if os.path.basename(file_path) == "codemcp.toml":
+        raise ValueError("Editing codemcp.toml is not allowed for security reasons.")
+
     # Convert to absolute path if needed
     full_file_path = (
         file_path if os.path.isabs(file_path) else os.path.abspath(file_path)
