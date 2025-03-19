@@ -1,8 +1,14 @@
 """Configuration module for codemcp.
 
-This module provides access to user configuration stored in ~/.codemcprc in TOML format.
+This module provides access to user configuration stored in one of these locations:
+1. $CODEMCP_CONFIG_DIR/codemcprc if $CODEMCP_CONFIG_DIR is defined
+2. $XDG_CONFIG_HOME/codemcp/codemcprc if $XDG_CONFIG_HOME is defined
+3. $HOME/.codemcprc
+
+The configuration is stored in TOML format.
 """
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -23,16 +29,42 @@ DEFAULT_CONFIG = {
 
 
 def get_config_path() -> Path:
-    """Return the path to the user's config file."""
+    """Return the path to the user's config file.
+
+    Checks the following locations in order:
+    1. $CODEMCP_CONFIG_DIR/codemcprc if $CODEMCP_CONFIG_DIR is defined
+    2. $XDG_CONFIG_HOME/codemcp/codemcprc if $XDG_CONFIG_HOME is defined
+    3. Fallback to $HOME/.codemcprc
+
+    Returns:
+        Path to the config file
+    """
+    # Check $CODEMCP_CONFIG_DIR first
+    if "CODEMCP_CONFIG_DIR" in os.environ:
+        path = Path(os.environ["CODEMCP_CONFIG_DIR"]) / "codemcprc"
+        if path.exists():
+            return path
+
+    # Check $XDG_CONFIG_HOME next
+    if "XDG_CONFIG_HOME" in os.environ:
+        path = Path(os.environ["XDG_CONFIG_HOME"]) / "codemcp" / "codemcprc"
+        if path.exists():
+            return path
+
+    # Fallback to $HOME/.codemcprc
     return Path.home() / ".codemcprc"
 
 
 def load_config() -> dict[str, Any]:
-    """Load configuration from ~/.codemcprc file.
+    """Load configuration from the config file.
+
+    Looks for the config file in the locations specified by get_config_path():
+    1. $CODEMCP_CONFIG_DIR/codemcprc if $CODEMCP_CONFIG_DIR is defined
+    2. $XDG_CONFIG_HOME/codemcp/codemcprc if $XDG_CONFIG_HOME is defined
+    3. Fallback to $HOME/.codemcprc
 
     Returns:
         Dict containing the merged configuration (defaults + user config).
-
     """
     config = DEFAULT_CONFIG.copy()
     config_path = get_config_path()
