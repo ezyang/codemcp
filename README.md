@@ -49,23 +49,40 @@ Then, in `claude_desktop_config.json`:
 }
 ```
 
-On Windows, double backslashes are necessary for the path:
+On Windows
+
+Step 1: install `codemcp` with `pip install git+https://github.com/ezyang/codemcp@prod` 
+Step 2: Add the following configuration to `claude_desktop_config.json` file
 
 ```
-C:\\Users\\<username>\\.local\\bin\\uvx.exe
+{
+    "mcpServers": {
+         "codemcp": {
+               "command": "python",
+               "args": ["-m", "codemcp"],
+               "env": {
+                "DEBUG": "*"
+              }
+            }
+    }
+}
 ```
+Step 3: Restart the Claude Desktop app i.e. quit the app from the bottom right navigation menu and start again. 
+
 
 If the MCP successfully loaded, a hammer icon will appear and when you click
 it "codemcp" will be visible.
 
 Pro tip: If the server fails to load, go to Settings > Developer > codemcp >
-Logs to look at the MCP logs, they're very helpful for debugging.
+Logs to look at the MCP logs, they're very helpful for debugging. The logs on 
+Windows should be loaded `C:\Users\<user_name>\AppData\Roaming\Claude\logs` 
+(replace `<user_name>` with your username. 
 
 Pro tip: if on Windows, the logs say "Git executable not found. Ensure that
 Git is installed and available", and you *just* installed Git, reboot your
 machine (the PATH update hasn't propagated.)  If this still doesn't work, open
 System Properties > Environment Variables > System variables > Path and ensure
-there is an entry for Git.
+there is an entry for Git. 
 
 Pro tip: if you like to live dangerously, you can change `prod` to `main`.  If
 you want to pin to a specific release, replace it with `0.3.0` or similar.
