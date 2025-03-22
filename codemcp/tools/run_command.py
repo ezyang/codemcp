@@ -13,7 +13,7 @@ __all__ = [
 async def run_command(
     project_dir: str,
     command: str,
-    arguments: Optional[Union[List[str], str]] = None,
+    arguments: Optional[List[str]] = None,
     chat_id: str = None,
 ) -> str:
     """Run a command that is configured in codemcp.toml.
@@ -37,8 +37,8 @@ async def run_command(
         command_list = command_list.copy()
 
         # If a single string is provided, parse it into a list of arguments
-        if isinstance(arguments, str):
-            parsed_args = shlex.split(arguments)
+        if len(arguments) == 1:
+            parsed_args = shlex.split(arguments[0])
             command_list.extend(parsed_args)
         else:
             command_list.extend(arguments)
