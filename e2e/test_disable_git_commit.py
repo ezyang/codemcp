@@ -3,9 +3,7 @@
 """Tests for the disable_git_commit configuration option."""
 
 import os
-import sys
 import unittest
-import re
 
 from codemcp import config
 from codemcp.testing import MCPEndToEndTestCase
@@ -262,7 +260,7 @@ class DisableGitCommitTest(MCPEndToEndTestCase):
 
             try:
                 # First edit with disable_git_commit=True
-                result1_text = await self.call_tool_assert_success(
+                await self.call_tool_assert_success(
                     session,
                     "codemcp",
                     {
@@ -295,7 +293,7 @@ class DisableGitCommitTest(MCPEndToEndTestCase):
                 )
 
                 # Second edit with the same chat_id
-                result2_text = await self.call_tool_assert_success(
+                await self.call_tool_assert_success(
                     session,
                     "codemcp",
                     {

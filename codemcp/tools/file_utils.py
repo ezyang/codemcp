@@ -159,5 +159,7 @@ def write_file_sync(file_path: str, content: str, encoding: str = "utf-8") -> No
         content: The content to write
         encoding: The encoding to use
     """
-    with open(file_path, "w", encoding=encoding) as f:
-        f.write(content)
+    # Use binary mode ('wb') to avoid Python's automatic newline translation
+    # This prevents double-translation of line endings on Windows
+    with open(file_path, "wb") as f:
+        f.write(content.encode(encoding))
