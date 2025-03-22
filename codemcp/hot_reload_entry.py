@@ -12,6 +12,8 @@ from mcp.server.fastmcp import FastMCP
 # Import the original codemcp function from main to clone its signature
 from codemcp.main import (
     codemcp as original_codemcp,
+)
+from codemcp.main import (
     configure_logging as main_configure_logging,
 )
 
