@@ -3,7 +3,9 @@
 import logging
 import os
 import re
+import sys
 
+from .config import get_disable_git_commit
 from .git_message import (
     update_commit_message_with_description,
 )
@@ -139,6 +141,27 @@ async def create_commit_reference(
         text=True,
         check=True,
     )
+
+    # Check if git commit is disabled
+    disable_git_commit = get_disable_git_commit()
+    print(
+        f"DEBUG from create_commit_reference: disable_git_commit = {disable_git_commit}",
+        file=sys.stderr,
+    )
+
+    if disable_git_commit:
+        # Also update the virtual-head reference to point to the new commit
+        virtual_head_ref = "refs/codemcp/virtual-head"
+        await run_command(
+            ["git", "update-ref", virtual_head_ref, commit_hash],
+            cwd=git_cwd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        print(
+            f"DEBUG: Updated virtual-head reference to {commit_hash}", file=sys.stderr
+        )
 
     return (
         f"Created commit reference {ref_name} -> {commit_hash}",
@@ -332,18 +355,73 @@ async def commit_changes(
             )
             new_commit_hash = new_commit_result.stdout.strip()
 
-            # Update HEAD to point to the new commit
+            # Check if git commit is disabled
+            disable_git_commit = get_disable_git_commit()
+            print(
+                f"DEBUG from git_commit.py: disable_git_commit = {disable_git_commit}",
+                file=sys.stderr,
+            )
+            if not disable_git_commit:
+                # Update HEAD to point to the new commit
+                await run_command(
+                    ["git", "update-ref", "HEAD", new_commit_hash],
+                    cwd=git_cwd,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+
+            logging.info(f"Successfully applied reference commit for chat ID {chat_id}")
+            # After applying, the HEAD commit should have the right chat_id
+            head_chat_id = await get_head_commit_chat_id(git_cwd)
+
+    # When disable_git_commit=True, we need to check for the case where we're operating
+    # with the virtual-head reference not yet created or not having the right chat_id
+    disable_git_commit = get_disable_git_commit()
+    if disable_git_commit and head_chat_id != chat_id:
+        # Let's manually verify if we can find a reference for this chat_id
+        ref_name = f"refs/codemcp/{chat_id}"
+        ref_exists = False
+        try:
+            ref_result = await run_command(
+                ["git", "show-ref", "--verify", ref_name],
+                cwd=git_cwd,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            ref_exists = ref_result.returncode == 0
+        except Exception:
+            ref_exists = False
+
+        if ref_exists:
+            # Set up virtual-head to point to this reference commit
+            virtual_head_ref = "refs/codemcp/virtual-head"
+            ref_commit = await run_command(
+                ["git", "rev-parse", ref_name],
+                cwd=git_cwd,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            ref_commit_hash = ref_commit.stdout.strip()
+
+            # Update the virtual-head reference
             await run_command(
-                ["git", "update-ref", "HEAD", new_commit_hash],
+                ["git", "update-ref", virtual_head_ref, ref_commit_hash],
                 cwd=git_cwd,
                 capture_output=True,
                 text=True,
                 check=True,
             )
 
-            logging.info(f"Successfully applied reference commit for chat ID {chat_id}")
-            # After applying, the HEAD commit should have the right chat_id
-            head_chat_id = await get_head_commit_chat_id(git_cwd)
+            # Update the head_chat_id
+            head_chat_id = chat_id
+
+            print(
+                f"DEBUG: Set up virtual-head to point to {ref_name} -> {ref_commit_hash}",
+                file=sys.stderr,
+            )
 
     assert head_chat_id == chat_id, (
         "This usually fails because you didn't InitProject before interacting with codemcp"
@@ -366,20 +444,89 @@ async def commit_changes(
         commit_hash=commit_hash,
     )
 
-    # Amend the previous commit
-    commit_result = await run_command(
-        ["git", "commit", "--amend", "-m", commit_message],
-        cwd=git_cwd,
-        capture_output=True,
-        text=True,
-        check=False,
+    # Check if git commit is disabled
+    disable_git_commit = get_disable_git_commit()
+    print(
+        f"DEBUG from git_commit.py (second location): disable_git_commit = {disable_git_commit}",
+        file=sys.stderr,
     )
+
+    if disable_git_commit:
+        # Create a new commit object without updating HEAD
+        # First, get the current tree
+        tree_result = await run_command(
+            ["git", "write-tree"],
+            cwd=git_cwd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        tree_hash = tree_result.stdout.strip()
+
+        # Get parent (current HEAD)
+        head_hash_result = await run_command(
+            ["git", "rev-parse", "HEAD"],
+            cwd=git_cwd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        head_hash = head_hash_result.stdout.strip()
+
+        # Create a new commit without changing HEAD
+        commit_result = await run_command(
+            ["git", "commit-tree", tree_hash, "-p", head_hash, "-m", commit_message],
+            cwd=git_cwd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    else:
+        # Amend the previous commit normally
+        commit_result = await run_command(
+            ["git", "commit", "--amend", "-m", commit_message],
+            cwd=git_cwd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
     if commit_result.returncode != 0:
         return False, f"Failed to commit changes: {commit_result.stderr}"
 
-    # If this was an amended commit, include the original hash in the message
-    return (
-        True,
-        f"Changes {verb} successfully (previous commit was {commit_hash})",
-    )
+    new_commit_hash = ""
+    if disable_git_commit:
+        # When using commit-tree, the output is the new commit hash
+        new_commit_hash = commit_result.stdout.strip()
+
+        # Store the commit in the reference for this chat_id
+        ref_name = f"refs/codemcp/{chat_id}"
+        await run_command(
+            ["git", "update-ref", ref_name, new_commit_hash],
+            cwd=git_cwd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Also create/update a special virtual HEAD reference
+        virtual_head_ref = "refs/codemcp/virtual-head"
+        await run_command(
+            ["git", "update-ref", virtual_head_ref, new_commit_hash],
+            cwd=git_cwd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Modified success message for disable_git_commit mode
+        return (
+            True,
+            f"Changes {verb} successfully without updating working tree (previous commit was {commit_hash}, new commit is {new_commit_hash})",
+        )
+    else:
+        # If this was a normal amended commit, include the original hash in the message
+        return (
+            True,
+            f"Changes {verb} successfully (previous commit was {commit_hash})",
+        )

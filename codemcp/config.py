@@ -19,6 +19,7 @@ __all__ = [
     "load_config",
     "get_logger_verbosity",
     "get_logger_path",
+    "get_disable_git_commit",
 ]
 
 # Default configuration values
@@ -26,6 +27,9 @@ DEFAULT_CONFIG = {
     "logger": {
         "verbosity": "INFO",  # Default logging level
         "path": str(Path.home() / ".codemcp"),  # Default logger path
+    },
+    "git": {
+        "disable_git_commit": False,  # Whether to disable git commit and only record changes
     },
 }
 
@@ -119,3 +123,14 @@ def get_logger_path() -> str:
     """
     config = load_config()
     return config["logger"]["path"]
+
+
+def get_disable_git_commit() -> bool:
+    """Get whether to disable git commit and only record changes.
+
+    Returns:
+        Boolean indicating whether to disable git commit and only record changes.
+
+    """
+    config = load_config()
+    return config["git"]["disable_git_commit"]

@@ -4,7 +4,9 @@ import logging
 import os
 import re
 import subprocess
+import sys  # For debug prints
 
+from .config import get_disable_git_commit
 from .shell import run_command
 
 __all__ = [
@@ -23,6 +25,9 @@ log = logging.getLogger(__name__)
 async def get_head_commit_message(directory: str) -> str:
     """Get the full commit message from HEAD.
 
+    When disable_git_commit is enabled, this function will check the virtual-head reference
+    instead of the actual HEAD.
+
     Args:
         directory: The directory to check
 
@@ -33,7 +38,55 @@ async def get_head_commit_message(directory: str) -> str:
         subprocess.SubprocessError: If HEAD does not exist or another git error occurs
         Exception: For any other errors during the operation
     """
-    # Get the commit message - this will fail if HEAD doesn't exist
+    # Check if git commit is disabled
+    disable_git_commit = get_disable_git_commit()
+    print(
+        f"DEBUG from get_head_commit_message: disable_git_commit = {disable_git_commit}",
+        file=sys.stderr,
+    )
+
+    if disable_git_commit:
+        # Check if virtual-head reference exists
+        virtual_head_ref = "refs/codemcp/virtual-head"
+        ref_exists = False
+
+        try:
+            ref_result = await run_command(
+                ["git", "show-ref", "--verify", virtual_head_ref],
+                cwd=directory,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            ref_exists = ref_result.returncode == 0
+        except Exception as e:
+            print(f"DEBUG: Error checking virtual-head ref: {e}", file=sys.stderr)
+            ref_exists = False
+
+        if ref_exists:
+            # Use the virtual-head reference instead of HEAD
+            try:
+                result = await run_command(
+                    ["git", "log", "-1", "--pretty=%B", virtual_head_ref],
+                    cwd=directory,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                message = result.stdout.strip()
+                print(
+                    f"DEBUG: found message from virtual-head: {message[:50]}...",
+                    file=sys.stderr,
+                )
+                return message
+            except Exception as e:
+                print(
+                    f"DEBUG: Error getting message from virtual-head: {e}",
+                    file=sys.stderr,
+                )
+                # Fall through to use HEAD
+
+    # Default behavior - get message from HEAD
     result = await run_command(
         ["git", "log", "-1", "--pretty=%B"],
         cwd=directory,
@@ -42,11 +95,16 @@ async def get_head_commit_message(directory: str) -> str:
         text=True,
     )
 
-    return result.stdout.strip()
+    message = result.stdout.strip()
+    print(f"DEBUG: found message from HEAD: {message[:50]}...", file=sys.stderr)
+    return message
 
 
 async def get_head_commit_hash(directory: str, short: bool = True) -> str:
     """Get the commit hash from HEAD.
+
+    When disable_git_commit is enabled, this function will check the virtual-head reference
+    instead of the actual HEAD.
 
     Args:
         directory: The directory to check
@@ -59,7 +117,59 @@ async def get_head_commit_hash(directory: str, short: bool = True) -> str:
         subprocess.SubprocessError: If HEAD does not exist or another git error occurs
         Exception: For any other errors during the operation
     """
-    # Get the commit hash (short or full)
+    # Check if git commit is disabled
+    disable_git_commit = get_disable_git_commit()
+    print(
+        f"DEBUG from get_head_commit_hash: disable_git_commit = {disable_git_commit}",
+        file=sys.stderr,
+    )
+
+    if disable_git_commit:
+        # Check if virtual-head reference exists
+        virtual_head_ref = "refs/codemcp/virtual-head"
+        ref_exists = False
+
+        try:
+            ref_result = await run_command(
+                ["git", "show-ref", "--verify", virtual_head_ref],
+                cwd=directory,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            ref_exists = ref_result.returncode == 0
+        except Exception as e:
+            print(f"DEBUG: Error checking virtual-head ref: {e}", file=sys.stderr)
+            ref_exists = False
+
+        if ref_exists:
+            # Use the virtual-head reference instead of HEAD
+            cmd = ["git", "rev-parse"]
+            if short:
+                cmd.append("--short")
+            cmd.append(virtual_head_ref)
+
+            try:
+                result = await run_command(
+                    cmd,
+                    cwd=directory,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                hash_value = result.stdout.strip()
+                print(
+                    f"DEBUG: found hash from virtual-head: {hash_value}",
+                    file=sys.stderr,
+                )
+                return hash_value
+            except Exception as e:
+                print(
+                    f"DEBUG: Error getting hash from virtual-head: {e}", file=sys.stderr
+                )
+                # Fall through to use HEAD
+
+    # Default behavior - check HEAD
     cmd = ["git", "rev-parse"]
     if short:
         cmd.append("--short")
@@ -73,11 +183,16 @@ async def get_head_commit_hash(directory: str, short: bool = True) -> str:
         text=True,
     )
 
-    return result.stdout.strip()
+    hash_value = result.stdout.strip()
+    print(f"DEBUG: found hash from HEAD: {hash_value}", file=sys.stderr)
+    return hash_value
 
 
 async def get_head_commit_chat_id(directory: str) -> str | None:
     """Get the chat ID from the HEAD commit's message.
+
+    When disable_git_commit is enabled, this function will check the virtual-head reference
+    instead of the actual HEAD.
 
     Args:
         directory: The directory to check
@@ -89,6 +204,40 @@ async def get_head_commit_chat_id(directory: str) -> str | None:
         subprocess.SubprocessError: If HEAD does not exist or another git error occurs
         Exception: For any other errors during the operation
     """
+    # Check if git commit is disabled
+    disable_git_commit = get_disable_git_commit()
+    print(
+        f"DEBUG from get_head_commit_chat_id: disable_git_commit = {disable_git_commit}",
+        file=sys.stderr,
+    )
+
+    if disable_git_commit:
+        # Check if virtual-head reference exists
+        virtual_head_ref = "refs/codemcp/virtual-head"
+        ref_exists = False
+
+        try:
+            ref_result = await run_command(
+                ["git", "show-ref", "--verify", virtual_head_ref],
+                cwd=directory,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            ref_exists = ref_result.returncode == 0
+        except Exception as e:
+            print(f"DEBUG: Error checking virtual-head ref: {e}", file=sys.stderr)
+            ref_exists = False
+
+        print(f"DEBUG: virtual-head reference exists: {ref_exists}", file=sys.stderr)
+
+        if ref_exists:
+            # Use the virtual-head reference instead of HEAD
+            chat_id = await get_ref_commit_chat_id(directory, virtual_head_ref)
+            print(f"DEBUG: found chat_id from virtual-head: {chat_id}", file=sys.stderr)
+            return chat_id
+
+    # Default behavior - check HEAD commit
     commit_message = await get_head_commit_message(directory)
 
     # Use regex to find the last occurrence of codemcp-id: XXX
@@ -97,6 +246,7 @@ async def get_head_commit_chat_id(directory: str) -> str | None:
 
     # Return the last match if any matches found
     if matches:
+        print(f"DEBUG: found chat_id from HEAD: {matches[-1].strip()}", file=sys.stderr)
         return matches[-1].strip()
     return None
 
