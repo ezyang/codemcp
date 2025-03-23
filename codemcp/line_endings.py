@@ -3,6 +3,7 @@
 """Module for line ending detection and handling."""
 
 import asyncio
+import configparser
 import os
 import re
 from pathlib import Path
@@ -16,6 +17,7 @@ __all__ = [
     "apply_line_endings",
     "detect_line_endings",
     "detect_repo_line_endings",
+    "glob_to_regex",
 ]
 
 
@@ -69,6 +71,71 @@ def apply_line_endings(content: str, line_ending: str) -> str:
     return normalized
 
 
+def glob_to_regex(pattern: str) -> str:
+    """Convert EditorConfig glob pattern to regex pattern.
+
+    Handles the following glob patterns:
+    * - Matches any string of characters, except path separators (/)
+    ** - Matches any string of characters
+    ? - Matches any single character
+    [name] - Matches any single character in name
+    [!name] - Matches any single character not in name
+    {s1,s2,s3} - Matches any of the strings given (separated by commas)
+    {num1..num2} - Matches any integer numbers between num1 and num2
+
+    Args:
+        pattern: The EditorConfig glob pattern
+
+    Returns:
+        Equivalent regex pattern
+    """
+    # Escape regex special characters except those used in glob patterns
+    pattern = (
+        re.escape(pattern)
+        .replace("\\*", "*")
+        .replace("\\?", "?")
+        .replace("\\[", "[")
+        .replace("\\]", "]")
+        .replace("\\{", "{")
+        .replace("\\}", "}")
+    )
+
+    # Handle {s1,s2,s3} patterns (strings)
+    string_pattern = r"\{([^\.]+?)\}"
+    for match in re.finditer(string_pattern, pattern):
+        original = match.group(0)
+        options = match.group(1).split(",")
+        replacement = f"({'|'.join(re.escape(opt) for opt in options)})"
+        pattern = pattern.replace(original, replacement, 1)
+
+    # Handle {num1..num2} patterns (integer ranges)
+    range_pattern = r"\{(-?\d+)\.\.(-?\d+)\}"
+    for match in re.finditer(range_pattern, pattern):
+        original = match.group(0)
+        start = int(match.group(1))
+        end = int(match.group(2))
+        if start <= end:
+            replacement = f"({'|'.join(str(i) for i in range(start, end + 1))})"
+        else:
+            replacement = f"({'|'.join(str(i) for i in range(start, end - 1, -1))})"
+        pattern = pattern.replace(original, replacement, 1)
+
+    # Handle [name] and [!name] character classes
+    # These should already work in regex after escaping
+
+    # Handle ** (matches any string of characters including path separators)
+    pattern = pattern.replace("**", ".*")
+
+    # Handle * (matches any string of characters except path separators)
+    pattern = pattern.replace("*", "[^/]*")
+
+    # Handle ? (matches any single character)
+    pattern = pattern.replace("?", ".")
+
+    # Add anchors to ensure the pattern matches the entire string
+    return f"^{pattern}$"
+
+
 def check_editorconfig(file_path: str) -> Optional[str]:
     """Check .editorconfig file for line ending preferences.
 
@@ -85,56 +152,67 @@ def check_editorconfig(file_path: str) -> Optional[str]:
 
         # Iterate up through parent directories looking for .editorconfig
         current_dir = file_dir
-        while current_dir != current_dir.parent:  # Stop at the root directory
+        root_found = False
+
+        while (
+            current_dir != current_dir.parent and not root_found
+        ):  # Stop at the root directory or if root=true found
             editorconfig_path = current_dir / ".editorconfig"
             if editorconfig_path.exists():
                 # Found an .editorconfig file
+                config = configparser.ConfigParser(strict=False)
+
+                # Read the file with allowed section names containing [ and ]
                 with open(editorconfig_path, "r", encoding="utf-8") as f:
-                    ec_content = f.read()
+                    config.read_file(f)
 
-                # Parse the .editorconfig file
-                file_name = Path(file_path).name
+                # Check if root=true is set
+                if (
+                    "root" in config.defaults()
+                    and config.defaults()["root"].lower() == "true"
+                ):
+                    root_found = True
 
-                # Find the most specific section that applies to this file
-                sections = []
-                for match in re.finditer(r"^\[(.+?)\]", ec_content, re.MULTILINE):
-                    pattern = match.group(1)
+                # Convert the file path to a relative path from the editorconfig location
+                relative_path = str(
+                    Path(file_path).relative_to(current_dir)
+                    if current_dir != file_dir
+                    else Path(file_path).name
+                )
 
-                    # Convert .editorconfig glob pattern to regex pattern
-                    regex_pattern = pattern.replace(".", r"\.").replace("*", ".*")
-                    if re.match(regex_pattern, file_name):
-                        # Extract section content
-                        section_start = match.end()
-                        next_section = re.search(
-                            r"^\[", ec_content[section_start:], re.MULTILINE
-                        )
-                        if next_section:
-                            section_end = section_start + next_section.start()
-                            section = ec_content[section_start:section_end]
-                        else:
-                            section = ec_content[section_start:]
+                # Get all sections and find matching ones
+                sections = list(config.sections())
+                matching_sections = []
 
-                        sections.append((pattern, section))
+                for section in sections:
+                    # Convert editorconfig glob pattern to regex pattern
+                    regex_pattern = glob_to_regex(section)
 
-                # Find the most specific section
-                if sections:
-                    # Sort by specificity (more specific patterns come later)
-                    sections.sort(key=lambda s: len(s[0]))
+                    # Try to match the pattern against the relative path
+                    if re.match(regex_pattern, relative_path):
+                        matching_sections.append(section)
 
-                    # Check the most specific section for end_of_line setting
-                    for _, section in reversed(sections):
-                        eol_match = re.search(r"end_of_line\s*=\s*(.+)", section)
-                        if eol_match:
-                            eol_value = eol_match.group(1).strip().lower()
-                            if eol_value == "crlf":
-                                return "CRLF"
-                            elif eol_value == "lf":
-                                return "LF"
-                            # Ignore other values (like CR)
+                # Sort by specificity (more specific patterns come later)
+                # This is a simple heuristic - longer patterns are generally more specific
+                matching_sections.sort(key=lambda s: (s.count("*"), -len(s)))
+
+                # Check the matching sections for end_of_line setting, prioritizing the most specific
+                for section in reversed(matching_sections):
+                    if config.has_option(section, "end_of_line"):
+                        eol_value = config.get(section, "end_of_line").strip().lower()
+                        if eol_value == "unset":
+                            # 'unset' value means ignore this setting, continue to next match
+                            continue
+                        elif eol_value == "crlf":
+                            return "CRLF"
+                        elif eol_value == "lf":
+                            return "LF"
+                        # Ignore other values (like CR)
 
                 # If we found an .editorconfig but couldn't determine the line ending,
-                # stop searching (don't check parent dirs)
-                break
+                # stop searching if this is a root config file
+                if root_found:
+                    break
 
             # Move up to the parent directory
             current_dir = current_dir.parent
