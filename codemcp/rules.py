@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-import fnmatch
 import logging
 import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
+
+from codemcp import glob
 
 __all__ = [
     "Rule",
@@ -103,6 +104,8 @@ def match_file_with_glob(file_path: str, glob_pattern: str) -> bool:
     )
 
     # Simple case: direct file extension matching (*.js)
+    # For compatibility with existing tests and code, we'll match *.js against any .js file
+    # regardless of path, which matches the original behavior
     if glob_pattern.startswith("*."):
         result = file_name.endswith(glob_pattern[1:])
         logging.debug(
@@ -111,13 +114,26 @@ def match_file_with_glob(file_path: str, glob_pattern: str) -> bool:
         return result
 
     # Handle "**/*.js" pattern (match any file with .js extension in any directory)
-    if glob_pattern == "**/*.js" or glob_pattern == "**/*.jsx":
+    if glob_pattern.startswith("**/*."):
         ext = glob_pattern.split(".")[-1]
         result = file_name.endswith("." + ext)
         logging.debug(
             f"Any dir with extension (**/*.ext): pattern={glob_pattern}, ext=.{ext}, result={result}"
         )
         return result
+
+    # Handle leading **/ patterns
+    if glob_pattern.startswith("**/") and not "/**/" in glob_pattern:
+        # **/file.txt - match file.txt in any directory
+        simple_pattern = glob_pattern[3:]  # Remove leading **/
+
+        # For simple filenames, just match the filename
+        if "/" not in simple_pattern:
+            result = file_name == simple_pattern
+            logging.debug(
+                f"Leading **/ with simple filename: pattern={simple_pattern}, file={file_name}, result={result}"
+            )
+            return result
 
     # Handle patterns like "src/**/*.jsx" (match files in src directory or subdirectories)
     if "/" in glob_pattern and "**" in glob_pattern:
@@ -129,42 +145,76 @@ def match_file_with_glob(file_path: str, glob_pattern: str) -> bool:
             # Convert path to string for comparison
             path_str = str(path)
 
-            # Simply check if dir_part appears in the path
-            # This is a simplification that matches the semantics described in the requirements
-            result = dir_part in path_str.split("/")
+            # Check if dir_part is in the path (better matching than before)
+            path_parts = path_str.split("/")
+            result = dir_part in path_parts
             logging.debug(
                 f"Directory match for trailing **: checking if '{dir_part}' is in path parts of '{path_str}', result={result}"
             )
             return result
 
         # Handle patterns with directory and file parts like "src/**/*.jsx"
-        dir_part, file_part = glob_pattern.split("/**/")
-        logging.debug(
-            f"Directory + file pattern: dir_part='{dir_part}', file_part='{file_part}'"
-        )
+        parts = glob_pattern.split("/**/")
+        if len(parts) == 2:
+            dir_part, file_part = parts
+            logging.debug(
+                f"Directory + file pattern: dir_part='{dir_part}', file_part='{file_part}'"
+            )
 
-        # Check if the file has the right extension
-        if file_part.startswith("*"):
-            ext = file_part[1:]  # *.jsx -> .jsx
-            if not file_name.endswith(ext):
+            # Check if the file has the right extension
+            if file_part.startswith("*"):
+                ext = file_part[1:]  # *.jsx -> .jsx
+                if not file_name.endswith(ext):
+                    logging.debug(
+                        f"Extension mismatch: expected '{ext}', file='{file_name}', result=False"
+                    )
+                    return False
+
+            # Special case for patterns like src/**/Button.jsx
+            if not file_part.startswith("*"):
+                # For exact filename matches, compare directly
+                result = dir_part in str(path) and file_name == file_part
                 logging.debug(
-                    f"Extension mismatch: expected '{ext}', file='{file_name}', result=False"
+                    f"Exact filename match: expected '{file_part}', got '{file_name}', result={result}"
                 )
-                return False
+                return result
 
-        # Check if it's in the right directory
-        result = dir_part in str(path)
+            # Check if it's in the right directory (as a path component)
+            path_str = str(path)
+            path_parts = path_str.split("/")
+            result = dir_part in path_parts
+            logging.debug(
+                f"Directory match: checking if '{dir_part}' is in path parts '{path_parts}', result={result}"
+            )
+            return result
+
+    # Handle question mark patterns with fnmatch
+    if "?" in glob_pattern:
+        import fnmatch
+
+        result = fnmatch.fnmatch(file_name, glob_pattern)
         logging.debug(
-            f"Directory match: checking if '{dir_part}' is in '{str(path)}', result={result}"
+            f"Question mark pattern match: pattern='{glob_pattern}', file='{file_name}', result={result}"
         )
         return result
 
-    # Default to fnmatch for other patterns
-    result = fnmatch.fnmatch(file_name, glob_pattern)
-    logging.debug(
-        f"Default fnmatch: pattern='{glob_pattern}', file='{file_name}', result={result}"
-    )
-    return result
+    # Use the glob module for more complex patterns
+    if "**" in glob_pattern:
+        # For patterns with **, use the glob module
+        result = glob.match(glob_pattern, str(path))
+        logging.debug(
+            f"Complex glob match: pattern='{glob_pattern}', path='{str(path)}', result={result}"
+        )
+        return result
+    else:
+        # For simple patterns without **, use fnmatch on the filename only
+        import fnmatch
+
+        result = fnmatch.fnmatch(file_name, glob_pattern)
+        logging.debug(
+            f"Simple fnmatch: pattern='{glob_pattern}', file='{file_name}', result={result}"
+        )
+        return result
 
 
 def find_applicable_rules(

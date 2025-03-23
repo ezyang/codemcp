@@ -78,7 +78,9 @@ This is a glob test rule
     def test_match_file_with_glob(self):
         # Test basic glob matching
         self.assertTrue(match_file_with_glob("test.js", "*.js"))
+        # For compatibility with existing code, *.js matches files in any directory
         self.assertTrue(match_file_with_glob("/path/to/test.js", "*.js"))
+        # But **/*.js should match files in any directory
         self.assertTrue(match_file_with_glob("/path/to/test.js", "**/*.js"))
         self.assertTrue(
             match_file_with_glob("/path/to/src/components/Button.jsx", "src/**/*.jsx")
