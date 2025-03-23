@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import contextlib
 import functools
 import logging
 import os
@@ -21,6 +22,17 @@ from codemcp.main import (
 mcp = FastMCP("codemcp")
 
 
+_CONTEXT = None
+
+async def aexit():
+    """Clear the hot reload context, if it exists"""
+    global _CONTEXT
+    if _CONTEXT is not None:
+        mgr, _, _, _ = _CONTEXT
+        await mgr.__aexit__(None, None, None)
+        _CONTEXT = None
+
+
 @mcp.tool()
 @functools.wraps(original_codemcp)  # This copies the signature and docstring
 async def codemcp(**kwargs) -> str:
@@ -31,33 +43,33 @@ async def codemcp(**kwargs) -> str:
     """
     configure_logging()
     try:
-        # Create server parameters for stdio connection to main.py
-        server_params = StdioServerParameters(
-            command=sys.executable,  # Use the same Python interpreter
-            args=[
-                os.path.join(os.path.dirname(__file__), "__main__.py")
-            ],  # Use __main__
-            env=os.environ.copy(),  # Pass current environment variables
-        )
+        global _CONTEXT
 
-        # Forward the tool call to the main.py subprocess
-        # TODO: Initialize this session once and then reuse it across tool
-        # call
-        async with stdio_client(server_params) as (read, write):
-            async with ClientSession(read, write) as session:
-                # Initialize the connection
-                await session.initialize()
+        if _CONTEXT is None:
+            # Create server parameters for stdio connection to main.py
+            server_params = StdioServerParameters(
+                command=sys.executable,  # Use the same Python interpreter
+                args=[
+                    os.path.join(os.path.dirname(__file__), "__main__.py")
+                ],  # Use __main__
+                env=os.environ.copy(),  # Pass current environment variables
+            )
+            mgr = contextlib.AsyncExitStack()
+            await mgr.__aenter__()
+            read, write = await mgr.enter_async_context(stdio_client(server_params))
+            session = await mgr.enter_async_context(ClientSession(read, write))
+            _CONTEXT = (mgr, read, write, session)
+            await session.initialize()
+        else:
+            mgr, read, write, session = _CONTEXT
 
-                # Call the codemcp tool in the subprocess
-                result = await session.call_tool("codemcp", arguments=kwargs)
-
-                # Return the result from the subprocess
-                # TODO: This loses the isError-ness
-                return result.content
+        # Call the codemcp tool in the subprocess
+        # TODO: This loses the isError-ness
+        return await session.call_tool("codemcp", arguments=kwargs)
 
     except Exception as e:
         logging.error("Exception in hot_reload_entry.py", exc_info=True)
-        return f"Error in hot_reload_entry.py: {str(e)}"
+        raise
 
 
 def configure_logging():
