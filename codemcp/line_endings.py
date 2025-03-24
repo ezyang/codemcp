@@ -3,10 +3,10 @@
 """Module for line ending detection and handling."""
 
 import asyncio
+import configparser
 import os
-import re
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Dict, Literal, Optional
 
 import tomli
 
@@ -70,6 +70,44 @@ def apply_line_endings(content: str, line_ending: str | None) -> str:
     return normalized
 
 
+class EditorConfigParser(configparser.ConfigParser):
+    """Custom ConfigParser for EditorConfig files.
+
+    Allows square brackets in section names and supports case-sensitive sections.
+    """
+
+    def __init__(self):
+        # Initialize with case-sensitive option names (values remain case-insensitive)
+        super().__init__(empty_lines_in_values=False)
+        self.optionxform = lambda option: option  # Keep option names case-sensitive
+
+    def read_file(self, f, source=None):
+        """Read and parse EditorConfig file."""
+        super().read_file(f, source)
+
+
+def parse_editorconfig(config_path: Path) -> Dict[str, Dict[str, str]]:
+    """Parse .editorconfig file using ConfigParser.
+
+    Args:
+        config_path: Path to the .editorconfig file
+
+    Returns:
+        Dictionary mapping section patterns to their properties
+    """
+    parser = EditorConfigParser()
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        parser.read_file(f)
+
+    # Convert the parser to a dictionary
+    config_dict = {}
+    for section in parser.sections():
+        config_dict[section] = dict(parser[section])
+
+    return config_dict
+
+
 def check_editorconfig(file_path: str) -> Optional[str]:
     """Check .editorconfig file for line ending preferences.
 
@@ -91,15 +129,11 @@ def check_editorconfig(file_path: str) -> Optional[str]:
             editorconfig_path = current_dir / ".editorconfig"
             if editorconfig_path.exists():
                 # Found an .editorconfig file
-                with open(editorconfig_path, "r", encoding="utf-8") as f:
-                    ec_content = f.read()
+                config_dict = parse_editorconfig(editorconfig_path)
 
-                # Parse the .editorconfig file
-                # Find the most specific section that applies to this file
-                sections = []
-                for match in re.finditer(r"^\[(.+?)\]", ec_content, re.MULTILINE):
-                    pattern = match.group(1)
-
+                # Find all sections that match this file
+                matching_sections = []
+                for pattern, properties in config_dict.items():
                     # Use glob.match with editorconfig features enabled
                     if glob_match(
                         pattern,
@@ -108,29 +142,16 @@ def check_editorconfig(file_path: str) -> Optional[str]:
                         editorconfig_asterisk=True,
                         editorconfig_double_asterisk=True,
                     ):
-                        # Extract section content
-                        section_start = match.end()
-                        next_section = re.search(
-                            r"^\[", ec_content[section_start:], re.MULTILINE
-                        )
-                        if next_section:
-                            section_end = section_start + next_section.start()
-                            section = ec_content[section_start:section_end]
-                        else:
-                            section = ec_content[section_start:]
+                        matching_sections.append((pattern, properties))
 
-                        sections.append((pattern, section))
+                # Sort by specificity (more specific patterns come later)
+                if matching_sections:
+                    matching_sections.sort(key=lambda s: len(s[0]))
 
-                # Find the most specific section
-                if sections:
-                    # Sort by specificity (more specific patterns come later)
-                    sections.sort(key=lambda s: len(s[0]))
-
-                    # Check the most specific section for end_of_line setting
-                    for _, section in reversed(sections):
-                        eol_match = re.search(r"end_of_line\s*=\s*(.+)", section)
-                        if eol_match:
-                            eol_value = eol_match.group(1).strip().lower()
+                    # Check sections in reverse order (most specific first)
+                    for _, properties in reversed(matching_sections):
+                        if "end_of_line" in properties:
+                            eol_value = properties["end_of_line"].lower()
                             if eol_value == "crlf":
                                 return "CRLF"
                             elif eol_value == "lf":
