@@ -5,6 +5,7 @@ import os
 
 from mcp.server.fastmcp import FastMCP
 
+from .tools.chmod_exec import chmod_exec
 from .tools.edit_file import edit_file_content
 from .tools.glob import MAX_RESULTS, glob_files
 from .tools.grep import grep_files
@@ -93,6 +94,7 @@ async def codemcp(
             "Glob": {"pattern", "path", "limit", "offset", "chat_id"},
             "RM": {"path", "description", "chat_id"},
             "Think": {"thought", "chat_id"},
+            "ChmodExec": {"path", "description", "chat_id"},
         }
 
         # Check if subtool exists
@@ -296,6 +298,14 @@ async def codemcp(
                 raise ValueError("thought is required for Think subtool")
 
             return await think(thought, chat_id)
+
+        if subtool == "ChmodExec":
+            if path is None:
+                raise ValueError("path is required for ChmodExec subtool")
+            if description is None:
+                raise ValueError("description is required for ChmodExec subtool")
+
+            return await chmod_exec(path, description, chat_id)
     except Exception:
         logging.error("Exception", exc_info=True)
         raise

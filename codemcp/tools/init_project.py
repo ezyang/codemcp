@@ -453,17 +453,31 @@ Args:
     description: Short description of why the file is being removed
     chat_id: The unique ID to identify the chat session
 
+## ChmodExec chat_id path description
+
+Makes a file executable by running chmod a+x on it.
+Provide a short description of why the file is being made executable.
+
+Before using this tool:
+1. Ensure the file exists
+2. Provide a meaningful description of why the file needs to be executable
+
+Args:
+    path: The path to the file to make executable (can be relative to the project root or absolute)
+    description: Short description of why the file is being made executable
+    chat_id: The unique ID to identify the chat session
+
 ## Summary
 
 Args:
-    subtool: The subtool to execute (ReadFile, WriteFile, EditFile, LS, InitProject, UserPrompt, RunCommand, RM, Think)
+    subtool: The subtool to execute (ReadFile, WriteFile, EditFile, LS, InitProject, UserPrompt, RunCommand, RM, Think, ChmodExec)
     path: The path to the file or directory to operate on
     content: Content for WriteFile subtool
     old_string: String to replace for EditFile subtool
     new_string: Replacement string for EditFile subtool
     offset: Line offset for ReadFile subtool
     limit: Line limit for ReadFile subtool
-    description: Short description of the change (for WriteFile/EditFile/RM)
+    description: Short description of the change (for WriteFile/EditFile/RM/ChmodExec)
     arguments: A string containing space-separated arguments for RunCommand subtool
     user_prompt: The user's verbatim text (for UserPrompt subtool)
     thought: The thought content (for Think subtool)
