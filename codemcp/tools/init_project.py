@@ -338,7 +338,8 @@ Reads a file from the local filesystem. The path parameter must be an absolute p
 ## WriteFile chat_id path content description
 
 Write a file to the local filesystem. Overwrites the existing file if there is one.
-Provide a short description of the change.
+Provide a short description of the change. The content parameter can be a string or any JSON-serializable object 
+(dictionaries, lists, numbers, booleans, etc.) which will be automatically serialized to JSON if not a string.
 
 Before using this tool:
 
@@ -458,7 +459,7 @@ Args:
 Args:
     subtool: The subtool to execute (ReadFile, WriteFile, EditFile, LS, InitProject, UserPrompt, RunCommand, RM, Think)
     path: The path to the file or directory to operate on
-    content: Content for WriteFile subtool
+    content: Content for WriteFile subtool (can be a string or any JSON-serializable object)
     old_string: String to replace for EditFile subtool
     new_string: Replacement string for EditFile subtool
     offset: Line offset for ReadFile subtool

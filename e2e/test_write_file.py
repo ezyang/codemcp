@@ -2,6 +2,7 @@
 
 """Tests for the WriteFile subtool."""
 
+import json
 import os
 import unittest
 
@@ -530,6 +531,197 @@ HEAD     Update file with second write
 
 codemcp-id: test-chat-id""",
             )
+
+    async def test_write_non_string_content(self):
+        """Test that WriteFile correctly serializes non-string content using json.dumps."""
+        test_file_path = os.path.join(self.temp_dir.name, "non_string_content.json")
+
+        # Create a complex data structure with different types
+        content = {
+            "name": "Test Data",
+            "values": [1, 2, 3, 4, 5],
+            "nested": {"boolean": True, "null_value": None, "number": 42.5},
+        }
+
+        # First add the file to git to make it tracked
+        with open(test_file_path, "w") as f:
+            f.write("")
+
+        # Add it to git
+        await self.git_run(["add", test_file_path])
+
+        # Commit it
+        await self.git_run(
+            ["commit", "-m", "Add empty file for non-string content test"]
+        )
+
+        async with self.create_client_session() as session:
+            # First initialize project to get chat_id
+            init_result_text = await self.call_tool_assert_success(
+                session,
+                "codemcp",
+                {
+                    "subtool": "InitProject",
+                    "path": self.temp_dir.name,
+                    "user_prompt": "Test initialization for non-string content test",
+                    "subject_line": "test: initialize for non-string content test",
+                    "reuse_head_chat_id": False,
+                },
+            )
+
+            # Extract chat_id from the init result
+            chat_id = self.extract_chat_id_from_text(init_result_text)
+
+            # Call the WriteFile tool with non-string content
+            result_text = await self.call_tool_assert_success(
+                session,
+                "codemcp",
+                {
+                    "subtool": "WriteFile",
+                    "path": test_file_path,
+                    "content": content,  # This is a dictionary, not a string
+                    "description": "Create file with non-string content",
+                    "chat_id": chat_id,
+                },
+            )
+
+            # Verify the success message
+            self.assertIn("Successfully wrote to", result_text)
+
+            # Verify the file was created with the correct content (serialized as JSON)
+            with open(test_file_path) as f:
+                file_content = f.read()
+
+            # Parse the JSON content and compare with the original dictionary
+            parsed_content = json.loads(file_content)
+            self.assertEqual(parsed_content, content)
+
+            # Verify that the content was written as a properly formatted JSON string
+            expected_json = json.dumps(content)
+            self.assertEqual(file_content, expected_json)
+
+            # Verify git state (working tree should be clean after automatic commit)
+            status = await self.git_run(["status"], capture_output=True, text=True)
+            self.assertIn("working tree clean", status)
+
+    async def test_stdio_client_non_string_content(self):
+        """True E2E test that goes through stdio_client to test non-string content serialization."""
+        import re
+
+        test_file_path = os.path.join(
+            self.temp_dir.name, "stdio_non_string_content.json"
+        )
+
+        # Create a complex data structure with different types including nested structures
+        content = {
+            "name": "StdIO Test Data",
+            "values": [1, 2, 3, 4, 5],
+            "nested": {
+                "boolean": True,
+                "null_value": None,
+                "number": 42.5,
+                "array": ["a", "b", "c"],
+                "deep_nested": {"key1": "value1", "key2": 123, "key3": False},
+            },
+            "types": [
+                {"type": "int", "example": 1},
+                {"type": "float", "example": 3.14},
+                {"type": "string", "example": "hello"},
+                {"type": "boolean", "example": False},
+            ],
+        }
+
+        # First add the file to git to make it tracked
+        with open(test_file_path, "w") as f:
+            f.write("")
+
+        # Add it to git
+        await self.git_run(["add", test_file_path])
+
+        # Commit it
+        await self.git_run(
+            ["commit", "-m", "Add empty file for stdio non-string content test"]
+        )
+
+        # Create a client session that goes through the stdio client
+        async with self.create_client_session() as session:
+            # First initialize project to get chat_id using the real session
+            init_result_text = await self.call_tool_assert_success(
+                session,
+                "codemcp",
+                {
+                    "subtool": "InitProject",
+                    "path": self.temp_dir.name,
+                    "user_prompt": "Test initialization for stdio non-string content test",
+                    "subject_line": "test: initialize for stdio test",
+                    "reuse_head_chat_id": False,
+                },
+            )
+
+            # Extract chat_id from the result
+            if isinstance(init_result_text, list) and len(init_result_text) > 0 and hasattr(init_result_text[0], "text"):
+                init_result_text = init_result_text[0].text
+            
+            chat_id_match = re.search(r"chat ID: ([a-zA-Z0-9-]+)", init_result_text)
+            self.assertIsNotNone(chat_id_match, "Could not find chat ID in response")
+            chat_id = chat_id_match.group(1)
+
+            # Call the WriteFile tool through the session with non-string content
+            result_text = await self.call_tool_assert_success(
+                session,
+                "codemcp",
+                {
+                    "subtool": "WriteFile",
+                    "path": test_file_path,
+                    "content": content,  # This is a complex dictionary, not a string
+                    "description": "Create file with non-string content via stdio",
+                    "chat_id": chat_id,
+                },
+            )
+
+            # Verify the success message
+            self.assertIn("Successfully wrote to", result_text)
+
+            # Verify the file was created with the correct content (serialized as JSON)
+            with open(test_file_path) as f:
+                file_content = f.read()
+
+            # Parse the JSON content and compare with the original dictionary
+            parsed_content = json.loads(file_content)
+            self.assertEqual(parsed_content, content)
+
+            # Verify that complex nested structures were preserved
+            self.assertEqual(parsed_content["nested"]["deep_nested"]["key2"], 123)
+            self.assertEqual(parsed_content["types"][1]["example"], 3.14)
+
+            # Read the file back using ReadFile to verify it works with the client session
+            read_content = await self.call_tool_assert_success(
+                session,
+                "codemcp",
+                {
+                    "subtool": "ReadFile",
+                    "path": test_file_path,
+                    "chat_id": chat_id,
+                },
+            )
+
+            # We already have read_content directly from call_tool_assert_success
+
+            # ReadFile might include line numbers, let's strip those out
+            if read_content.strip().startswith("1\t"):
+                # Strip the line numbers and any leading whitespace
+                read_lines = [
+                    line.split("\t", 1)[1] if "\t" in line else line
+                    for line in read_content.strip().splitlines()
+                ]
+                read_content = "".join(read_lines)
+
+            # The content might have slightly different formatting, so we'll parse both as JSON objects and compare
+            read_json = json.loads(read_content)
+            file_json = json.loads(file_content)
+
+            # Compare the parsed JSON objects
+            self.assertEqual(read_json, file_json)
 
 
 if __name__ == "__main__":
