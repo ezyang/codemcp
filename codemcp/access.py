@@ -2,7 +2,6 @@
 
 import logging
 import os
-import subprocess
 
 from .git_query import get_repository_root
 

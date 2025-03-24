@@ -53,7 +53,7 @@ async def read_file_content(
         )
 
     # Handle text files - use async file operations with anyio
-    from .async_file_utils import async_readlines
+    from ..async_file_utils import async_readlines
 
     all_lines = await async_readlines(
         full_file_path, encoding="utf-8", errors="replace"
