@@ -2,13 +2,13 @@
 
 import os
 
-from ..git import commit_changes
-from ..line_endings import detect_line_endings, detect_repo_line_endings
-from .file_utils import (
+from ..file_utils import (
     check_file_path_and_permissions,
     check_git_tracking_for_existing_file,
     write_text_content,
 )
+from ..git import commit_changes
+from ..line_endings import detect_line_endings, detect_repo_line_endings
 
 __all__ = [
     "write_file_content",

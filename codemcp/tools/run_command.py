@@ -3,7 +3,7 @@
 import shlex
 from typing import Optional
 
-from .code_command import get_command_from_config, run_code_command
+from ..code_command import get_command_from_config, run_code_command
 
 __all__ = [
     "run_command",

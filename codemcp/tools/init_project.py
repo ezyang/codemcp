@@ -92,7 +92,7 @@ async def _generate_chat_id(directory: str, description: str = None) -> str:
 
         if os.path.exists(counter_file):
             try:
-                from .async_file_utils import async_open_text
+                from ..async_file_utils import async_open_text
 
                 read_counter = await async_open_text(counter_file)
                 counter_value = int(read_counter.strip())
@@ -104,7 +104,7 @@ async def _generate_chat_id(directory: str, description: str = None) -> str:
 
         # Write the new counter value
         try:
-            from .async_file_utils import async_write_text
+            from ..async_file_utils import async_write_text
 
             await async_write_text(counter_file, str(counter_value))
         except IOError as e:
@@ -211,7 +211,7 @@ async def init_project(
 
         # We've already confirmed that codemcp.toml exists
         try:
-            from .async_file_utils import async_open_binary
+            from ..async_file_utils import async_open_binary
 
             rules_data = await async_open_binary(rules_file_path)
             # tomli.loads expects a string, but we have bytes, so use tomli.load with an io.BytesIO object

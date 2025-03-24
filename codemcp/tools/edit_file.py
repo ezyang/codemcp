@@ -9,14 +9,14 @@ import re
 from difflib import SequenceMatcher
 
 from ..common import get_edit_snippet
-from ..git import commit_changes
-from ..line_endings import detect_line_endings
-from .file_utils import (
+from ..file_utils import (
     async_open_text,
     check_file_path_and_permissions,
     check_git_tracking_for_existing_file,
     write_text_content,
 )
+from ..git import commit_changes
+from ..line_endings import detect_line_endings
 
 # Set up logger
 logger = logging.getLogger(__name__)
