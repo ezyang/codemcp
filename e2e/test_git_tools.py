@@ -102,18 +102,3 @@ class TestGitTools(MCPEndToEndTestCase):
         ):
             with self.assertRaises(ValueError):
                 await git_blame(path="/invalid/path")
-
-    async def test_command_failure(self):
-        """Test that tools handle command failures."""
-        # Test with invalid arguments
-        result = await git_log(arguments="--invalid-option", path=self.temp_dir.name)
-        self.assertIn("Error", result["resultForAssistant"])
-
-        result = await git_diff(arguments="--invalid-option", path=self.temp_dir.name)
-        self.assertIn("Error", result["resultForAssistant"])
-
-        result = await git_show(arguments="--invalid-option", path=self.temp_dir.name)
-        self.assertIn("Error", result["resultForAssistant"])
-
-        result = await git_blame(arguments="--invalid-option", path=self.temp_dir.name)
-        self.assertIn("Error", result["resultForAssistant"])

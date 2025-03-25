@@ -69,43 +69,24 @@ async def git_diff(
 
     logging.debug(f"Executing git diff command: {' '.join(cmd)}")
 
-    try:
-        # Execute git diff command asynchronously
-        result = await run_command(
-            cmd=cmd,
-            cwd=absolute_path,
-            capture_output=True,
-            text=True,
-            check=False,  # Don't raise exception if git diff fails
-        )
+    # Execute git diff command asynchronously
+    result = await run_command(
+        cmd=cmd,
+        cwd=absolute_path,
+        capture_output=True,
+        text=True,
+        check=True,  # Allow exception if git diff fails to propagate up
+    )
 
-        # Process results
-        if result.returncode != 0:
-            logging.error(
-                f"git diff failed with exit code {result.returncode}: {result.stderr}"
-            )
-            error_message = f"Error: {result.stderr}"
-            return {
-                "output": error_message,
-                "resultForAssistant": error_message,
-            }
+    # Prepare output
+    output = {
+        "output": result.stdout,
+    }
 
-        # Prepare output
-        output = {
-            "output": result.stdout,
-        }
+    # Add formatted result for assistant
+    output["resultForAssistant"] = render_result_for_assistant(output)
 
-        # Add formatted result for assistant
-        output["resultForAssistant"] = render_result_for_assistant(output)
-
-        return output
-    except Exception as e:
-        logging.exception(f"Error executing git diff: {e!s}")
-        error_message = f"Error executing git diff: {e!s}"
-        return {
-            "output": error_message,
-            "resultForAssistant": error_message,
-        }
+    return output
 
 
 def render_result_for_assistant(output: dict[str, Any]) -> str:

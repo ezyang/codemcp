@@ -64,74 +64,62 @@ async def chmod(
     # Get the directory containing the file for git operations
     directory = os.path.dirname(absolute_path)
 
-    try:
-        # Check current file permissions
-        current_mode = os.stat(absolute_path).st_mode
-        is_executable = bool(current_mode & stat.S_IXUSR)
+    # Check current file permissions
+    current_mode = os.stat(absolute_path).st_mode
+    is_executable = bool(current_mode & stat.S_IXUSR)
 
-        if mode == "a+x" and is_executable:
-            message = f"File '{path}' is already executable"
-            return {
-                "output": message,
-                "resultForAssistant": message,
-            }
-        elif mode == "a-x" and not is_executable:
-            message = f"File '{path}' is already non-executable"
-            return {
-                "output": message,
-                "resultForAssistant": message,
-            }
-
-        # Execute chmod command
-        cmd = ["chmod", mode, absolute_path]
-        await run_command(
-            cmd=cmd,
-            cwd=directory,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-
-        # Prepare success message
-        if mode == "a+x":
-            description = f"Make '{os.path.basename(absolute_path)}' executable"
-            action_msg = f"Made file '{path}' executable"
-        else:
-            description = (
-                f"Remove executable permission from '{os.path.basename(absolute_path)}'"
-            )
-            action_msg = f"Removed executable permission from file '{path}'"
-
-        # Commit the changes
-        success, commit_message = await commit_changes(
-            directory,
-            description,
-            chat_id,
-        )
-
-        if not success:
-            logging.warning(f"Failed to commit chmod changes: {commit_message}")
-            return {
-                "output": f"{action_msg}, but failed to commit changes: {commit_message}",
-                "resultForAssistant": f"{action_msg}, but failed to commit changes: {commit_message}",
-            }
-
-        # Prepare output
-        output = {
-            "output": f"{action_msg} and committed changes",
-        }
-
-        # Add formatted result for assistant
-        output["resultForAssistant"] = render_result_for_assistant(output)
-
-        return output
-    except Exception as e:
-        logging.exception(f"Error executing chmod: {e!s}")
-        error_message = f"Error executing chmod: {e!s}"
+    if mode == "a+x" and is_executable:
+        message = f"File '{path}' is already executable"
         return {
-            "output": error_message,
-            "resultForAssistant": error_message,
+            "output": message,
+            "resultForAssistant": message,
         }
+    elif mode == "a-x" and not is_executable:
+        message = f"File '{path}' is already non-executable"
+        return {
+            "output": message,
+            "resultForAssistant": message,
+        }
+
+    # Execute chmod command
+    cmd = ["chmod", mode, absolute_path]
+    await run_command(
+        cmd=cmd,
+        cwd=directory,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    # Prepare success message
+    if mode == "a+x":
+        description = f"Make '{os.path.basename(absolute_path)}' executable"
+        action_msg = f"Made file '{path}' executable"
+    else:
+        description = (
+            f"Remove executable permission from '{os.path.basename(absolute_path)}'"
+        )
+        action_msg = f"Removed executable permission from file '{path}'"
+
+    # Commit the changes
+    success, commit_message = await commit_changes(
+        directory,
+        description,
+        chat_id,
+    )
+
+    if not success:
+        raise RuntimeError(f"Failed to commit chmod changes: {commit_message}")
+
+    # Prepare output
+    output = {
+        "output": f"{action_msg} and committed changes",
+    }
+
+    # Add formatted result for assistant
+    output["resultForAssistant"] = render_result_for_assistant(output)
+
+    return output
 
 
 def render_result_for_assistant(output: dict[str, Any]) -> str:
