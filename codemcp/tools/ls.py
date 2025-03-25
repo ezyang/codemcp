@@ -15,7 +15,14 @@ __all__ = [
     "create_file_tree",
     "print_tree",
     "MAX_FILES",
+    "TOOL_NAME_FOR_PROMPT",
+    "DESCRIPTION",
 ]
+
+TOOL_NAME_FOR_PROMPT = "LS"
+DESCRIPTION = """
+Lists files and directories in a given path. The path parameter must be an absolute path, not a relative path. You should generally prefer the Glob and Grep tools, if you know which directories to search.
+"""
 
 MAX_FILES = 1000
 TRUNCATED_MESSAGE = f"There are more than {MAX_FILES} files in the directory. Use more specific paths to explore nested directories. The first {MAX_FILES} files and directories are included below:\n\n"

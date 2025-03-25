@@ -8,7 +8,16 @@ from ..rules import get_applicable_rules_content
 
 __all__ = [
     "user_prompt",
+    "TOOL_NAME_FOR_PROMPT",
+    "DESCRIPTION",
 ]
+
+TOOL_NAME_FOR_PROMPT = "UserPrompt"
+DESCRIPTION = """
+Records the user's verbatim prompt text for each interaction after the initial one.
+You should call this tool with the user's exact message at the beginning of each response.
+This tool must be called in every response except for the first one where InitProject was used.  Do NOT include documents or other attachments, only the text prompt.
+"""
 
 
 async def user_prompt(user_text: str, chat_id: str | None = None) -> str:

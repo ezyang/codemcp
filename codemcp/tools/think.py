@@ -4,7 +4,14 @@ import logging
 
 __all__ = [
     "think",
+    "TOOL_NAME_FOR_PROMPT",
+    "DESCRIPTION",
 ]
+
+TOOL_NAME_FOR_PROMPT = "Think"
+DESCRIPTION = """
+Use the tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning or some cache memory is needed.
+"""
 
 
 async def think(thought: str, chat_id: str | None = None) -> str:

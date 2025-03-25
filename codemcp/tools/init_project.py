@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
 import asyncio
+import importlib
 import logging
 import os
+import pkgutil
 import re
+from typing import Dict
 
 import tomli
 
@@ -12,6 +15,7 @@ from ..git import get_repository_root, is_git_repository
 
 __all__ = [
     "init_project",
+    "collect_tool_descriptions",
 ]
 
 
@@ -35,6 +39,46 @@ def _slugify(text: str) -> str:
         return "untitled"
     # Limit length to avoid excessively long identifiers
     return text[:50]
+
+
+def collect_tool_descriptions() -> Dict[str, str]:
+    """Collect tool name and description constants from all tools.
+
+    This function scans all modules in the codemcp.tools package and looks for
+    TOOL_NAME_FOR_PROMPT and DESCRIPTION constants.
+
+    Returns:
+        A dictionary mapping tool names to their descriptions
+    """
+    tool_descriptions = {}
+
+    # Import the tools package
+    import codemcp.tools as tools_package
+
+    # Get the directory where the tools package is located
+    package_dir = os.path.dirname(tools_package.__file__)
+
+    # Iterate through all modules in the tools package
+    for _, module_name, _ in pkgutil.iter_modules([package_dir]):
+        try:
+            # Skip __init__.py and this module to avoid circular imports
+            if module_name == "__init__" or module_name == "init_project":
+                continue
+
+            # Import the module
+            module = importlib.import_module(f"codemcp.tools.{module_name}")
+
+            # Check if the module has both constants
+            if hasattr(module, "TOOL_NAME_FOR_PROMPT") and hasattr(
+                module, "DESCRIPTION"
+            ):
+                tool_name = getattr(module, "TOOL_NAME_FOR_PROMPT")
+                description = getattr(module, "DESCRIPTION").strip()
+                tool_descriptions[tool_name] = description
+        except Exception as e:
+            logging.warning(f"Error importing module {module_name}: {e!s}")
+
+    return tool_descriptions
 
 
 def _generate_command_docs(command_docs: dict) -> str:
@@ -246,7 +290,12 @@ async def init_project(
         # conveyed in chats.
         # TODO: This prompt is pretty long, maybe we want it shorter
         # NB: If you edit this, also edit codemcp/main.py
-        system_prompt = f"""\
+
+        # Collect tool descriptions from modules
+        tool_descriptions = collect_tool_descriptions()
+
+        # Hard-coded section of the system prompt header
+        system_prompt_top = f"""\
 You are an AI assistant that helps users with software engineering tasks. Use the instructions below and the tools available to you to assist the user.
 
 # Tone and style
@@ -489,6 +538,70 @@ Args:
 This chat has been assigned a chat ID: {chat_id}
 When you use any tool, you MUST always include this chat ID as the chat_id parameter.
 """
+
+        # Generate tool documentation section
+        tools_documentation = []
+
+        # Add tools with descriptions from the tool modules
+        for tool_name, description in sorted(tool_descriptions.items()):
+            # Handle special cases for tools that need custom formatting
+            if tool_name == "ReadFile":
+                # Format ReadFile with MAX_LINES_TO_READ and MAX_LINE_LENGTH
+                description = description.format(
+                    MAX_LINES_TO_READ=MAX_LINES_TO_READ, MAX_LINE_LENGTH=MAX_LINE_LENGTH
+                )
+
+            # Add the tool documentation
+            tools_documentation.append(
+                f"## {tool_name} chat_id path arguments?\n\n{description}"
+            )
+
+        # Add RunCommand with special formatting for command_help and command_docs
+        run_command_doc = f"""
+Runs a command.  This does NOT support arbitrary code execution, ONLY call
+with this set of valid commands: {command_help}
+The arguments parameter should be a string and will be interpreted as space-separated
+arguments using shell-style tokenization (spaces separate arguments, quotes can be used
+for arguments containing spaces, etc.).
+{_generate_command_docs(command_docs)}
+"""
+        tools_documentation.append(
+            f"## RunCommand chat_id path command arguments?\n\n{run_command_doc}"
+        )
+
+        # Summary section
+        summary_section = """
+## Summary
+
+Args:
+    subtool: The subtool to execute (ReadFile, WriteFile, EditFile, LS, InitProject, UserPrompt, RunCommand, RM, Think, Chmod)
+    path: The path to the file or directory to operate on
+    content: Content for WriteFile subtool (any type will be serialized to string if needed)
+    old_string: String to replace for EditFile subtool
+    new_string: Replacement string for EditFile subtool
+    offset: Line offset for ReadFile subtool
+    limit: Line limit for ReadFile subtool
+    description: Short description of the change (for WriteFile/EditFile/RM)
+    arguments: A string containing space-separated arguments for RunCommand subtool
+    user_prompt: The user's verbatim text (for UserPrompt subtool)
+    thought: The thought content (for Think subtool)
+    mode: The chmod mode to apply (a+x or a-x) for Chmod subtool
+    chat_id: A unique ID to identify the chat session (required for all tools EXCEPT InitProject)
+"""
+
+        # Chat ID section
+        chat_id_section = f"""
+# Chat ID
+This chat has been assigned a chat ID: {chat_id}
+When you use any tool, you MUST always include this chat ID as the chat_id parameter.
+"""
+
+        # Combine all sections to build the complete system prompt
+        system_prompt = system_prompt_top
+        system_prompt += "\n\n# codemcp tool\nThe codemcp tool supports a number of subtools which you should use to perform coding tasks.\n\n"
+        system_prompt += "\n\n".join(tools_documentation)
+        system_prompt += "\n" + summary_section
+        system_prompt += chat_id_section
 
         # Combine system prompt, global prompt
         combined_prompt = system_prompt

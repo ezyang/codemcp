@@ -13,7 +13,14 @@ from ..rules import get_applicable_rules_content
 
 __all__ = [
     "read_file_content",
+    "TOOL_NAME_FOR_PROMPT",
+    "DESCRIPTION",
 ]
+
+TOOL_NAME_FOR_PROMPT = "ReadFile"
+DESCRIPTION = """
+Reads a file from the local filesystem. The path parameter must be an absolute path, not a relative path. By default, it reads up to {MAX_LINES_TO_READ} lines starting from the beginning of the file. You can optionally specify a line offset and limit (especially handy for long files), but it's recommended to read the whole file by not providing these parameters. Any lines longer than {MAX_LINE_LENGTH} characters will be truncated. For image files, the tool will display the image for you.
+"""
 
 
 async def read_file_content(

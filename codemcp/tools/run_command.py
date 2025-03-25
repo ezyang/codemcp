@@ -7,7 +7,23 @@ from ..code_command import get_command_from_config, run_code_command
 
 __all__ = [
     "run_command",
+    "TOOL_NAME_FOR_PROMPT",
+    "DESCRIPTION",
 ]
+
+TOOL_NAME_FOR_PROMPT = "RunCommand"
+DESCRIPTION = """
+Runs a command.  This does NOT support arbitrary code execution, ONLY call
+with this set of valid commands: format, lint, ghstack, test, accept
+The arguments parameter should be a string and will be interpreted as space-separated
+arguments using shell-style tokenization (spaces separate arguments, quotes can be used
+for arguments containing spaces, etc.).
+
+
+Command documentation:
+- test: Accepts a pytest-style test selector as an argument to run a specific test.
+- accept: Updates expecttest failing tests with their new values, akin to running with EXPECTTEST_ACCEPT=1. Accepts a pytest-style test selector as an argument to run a specific test.
+"""
 
 
 async def run_command(

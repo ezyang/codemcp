@@ -10,7 +10,24 @@ from ..shell import run_command
 
 __all__ = [
     "rm_file",
+    "TOOL_NAME_FOR_PROMPT",
+    "DESCRIPTION",
 ]
+
+TOOL_NAME_FOR_PROMPT = "RM"
+DESCRIPTION = """
+Removes a file using git rm and commits the change.
+Provide a short description of why the file is being removed.
+
+Before using this tool:
+1. Ensure the file exists and is tracked by git
+2. Provide a meaningful description of why the file is being removed
+
+Args:
+    path: The path to the file to remove (can be relative to the project root or absolute)
+    description: Short description of why the file is being removed
+    chat_id: The unique ID to identify the chat session
+"""
 
 
 async def rm_file(
