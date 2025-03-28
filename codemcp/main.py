@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 from pathlib import Path
 
 import click
@@ -437,11 +438,12 @@ def configure_logging(log_file: str = "codemcp.log") -> None:
         logging.info("Logs from 'mcp' module are being filtered")
 
 
-def init_codemcp_project(path: str) -> str:
+def init_codemcp_project(path: str, python: bool = False) -> str:
     """Initialize a new codemcp project.
 
     Args:
         path: Path to initialize the project in
+        python: Whether to create Python project files
 
     Returns:
         Message indicating success or failure
@@ -464,14 +466,73 @@ def init_codemcp_project(path: str) -> str:
         else:
             print(f"Git repository already exists in {project_path}")
 
-        # Create empty codemcp.toml file if it doesn't exist
-        config_file = project_path / "codemcp.toml"
-        if not config_file.exists():
-            with open(config_file, "w") as f:
-                f.write("# codemcp configuration file\n\n")
-            print(f"Created empty codemcp.toml file in {project_path}")
-        else:
-            print(f"codemcp.toml file already exists in {project_path}")
+        # Select the appropriate template directory
+        template_name = "python" if python else "blank"
+        templates_dir = Path(__file__).parent / "templates" / template_name
+
+        # Derive project name from directory name (for replacing placeholders)
+        project_name = project_path.name
+        package_name = re.sub(r"[^a-z0-9_]", "_", project_name.lower())
+
+        # Create a mapping for placeholder replacements
+        replacements = {
+            "__PROJECT_NAME__": project_name,
+            "__PACKAGE_NAME__": package_name,
+        }
+
+        # Track which files we need to add to git
+        files_to_add = []
+
+        # Function to replace placeholders in a string
+        def replace_placeholders(text):
+            for placeholder, value in replacements.items():
+                text = text.replace(placeholder, value)
+            return text
+
+        # Function to process a file from template directory to output directory
+        def process_file(template_file, template_root, output_root):
+            # Get the relative path from template root
+            rel_path = template_file.relative_to(template_root)
+
+            # Replace placeholders in the path components
+            path_parts = []
+            for part in rel_path.parts:
+                path_parts.append(replace_placeholders(part))
+
+            # Create the output path with replaced placeholders
+            output_path = output_root.joinpath(*path_parts)
+
+            # Create parent directories if they don't exist
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Skip if the file already exists
+            if output_path.exists():
+                print(f"File already exists, skipping: {output_path}")
+                return None
+
+            # Read the template content
+            with open(template_file, "r") as f:
+                content = f.read()
+
+            # Replace placeholders in content
+            content = replace_placeholders(content)
+
+            # Write to the output file
+            with open(output_path, "w") as f:
+                f.write(content)
+
+            # Return the relative path for git tracking
+            rel_path = output_path.relative_to(project_path)
+            print(f"Created file: {rel_path}")
+            return rel_path
+
+        # Recursively process template directory
+        for template_file in templates_dir.glob("**/*"):
+            if template_file.is_file() and template_file.name != ".gitkeep":
+                # Process template file
+                rel_path = process_file(template_file, templates_dir, project_path)
+                if rel_path:
+                    files_to_add.append(str(rel_path))
 
         # Make initial commit if there are no commits yet
         try:
@@ -484,23 +545,28 @@ def init_codemcp_project(path: str) -> str:
                 text=True,
             )
 
-            if result.returncode != 0:
-                # No commits yet, add codemcp.toml and make initial commit
+            if result.returncode != 0 and files_to_add:
+                # No commits yet, add files and make initial commit
+                for file in files_to_add:
+                    subprocess.run(["git", "add", file], cwd=project_path, check=True)
+                commit_msg = "chore: initialize codemcp project"
+                if python:
+                    commit_msg += " with Python template"
                 subprocess.run(
-                    ["git", "add", "codemcp.toml"], cwd=project_path, check=True
-                )
-                subprocess.run(
-                    ["git", "commit", "-m", "chore: initialize codemcp project"],
+                    ["git", "commit", "-m", commit_msg],
                     cwd=project_path,
                     check=True,
                 )
-                print("Created initial commit with codemcp.toml")
+                print(f"Created initial commit with {', '.join(files_to_add)}")
             else:
                 print("Repository already has commits, not creating initial commit")
         except subprocess.CalledProcessError as e:
             print(f"Warning: Failed to create initial commit: {e}")
 
-        return f"Successfully initialized codemcp project in {project_path}"
+        success_msg = f"Successfully initialized codemcp project in {project_path}"
+        if python:
+            success_msg += " with Python project structure"
+        return success_msg
     except Exception as e:
         return f"Error initializing project: {e}"
 
@@ -516,9 +582,13 @@ def cli(ctx: click.Context) -> None:
 
 @cli.command()
 @click.argument("path", type=click.Path(), default=".")
-def init(path: str) -> None:
-    """Initialize a new codemcp project with an empty codemcp.toml file and git repository."""
-    result = init_codemcp_project(path)
+@click.option("--python", is_flag=True, help="Initialize with Python project structure")
+def init(path: str, python: bool) -> None:
+    """Initialize a new codemcp project with an empty codemcp.toml file and git repository.
+
+    Use --python flag to create Python project files including pyproject.toml and package structure.
+    """
+    result = init_codemcp_project(path, python)
     click.echo(result)
 
 
