@@ -62,7 +62,7 @@ class WriteFileTest(MCPEndToEndTestCase):
             # Verify the file was created with the correct content
             with open(test_file_path) as f:
                 file_content = f.read()
-            self.assertEqual(file_content, content)
+            self.assertEqual(file_content, content + "\n")
 
             # Verify git state (working tree should be clean after automatic commit)
             status = await self.git_run(["status"], capture_output=True, text=True)
@@ -121,7 +121,7 @@ codemcp-id: test-chat-id""",
             # Verify the file was updated with the correct content
             with open(test_file_path) as f:
                 file_content = f.read()
-            self.assertEqual(file_content, updated_content)
+            self.assertEqual(file_content, updated_content + "\n")
 
             # Verify git state after second write
             status = await self.git_run(["status"], capture_output=True, text=True)
@@ -152,7 +152,7 @@ Test initialization for write_file test
 
 ```git-revs
 c9bcf9c  (Base revision)
-a0816d8  Create new file
+49bf8ff  Create new file
 HEAD     Update file with third line
 ```
 
@@ -211,7 +211,7 @@ codemcp-id: test-chat-id""",
             # Check content
             with open(new_file_path) as f:
                 content = f.read()
-            self.assertEqual(content, "This is a brand new file")
+            self.assertEqual(content, "This is a brand new file\n")
 
             # Verify the file was added to git
             ls_files_output = await self.git_run(
@@ -434,7 +434,7 @@ And make sure it runs correctly."""
             # Verify the file was created with the correct content
             with open(test_file_path) as f:
                 file_content = f.read()
-            self.assertEqual(file_content, content)
+            self.assertEqual(file_content, content + "\n")
 
             # Get the commit message of the HEAD commit
             commit_message = await self.git_run(
@@ -493,7 +493,7 @@ codemcp-id: test-chat-id""",
             # Verify the file was updated with the correct content
             with open(test_file_path) as f:
                 file_content = f.read()
-            self.assertEqual(file_content, updated_content)
+            self.assertEqual(file_content, updated_content + "\n")
 
             # Get the commit message after second write
             commit_message = await self.git_run(
@@ -524,7 +524,7 @@ And make sure it runs correctly.
 
 ```git-revs
 6350984  (Base revision)
-9071fd5  Write file from prompt with code block
+52d0290  Write file from prompt with code block
 HEAD     Update file with second write
 ```
 

@@ -86,7 +86,7 @@ class TestHotReloadEntry(MCPEndToEndTestCase):
         # Read the file to verify contents were written correctly
         with open(test_file_path, "r") as f:
             file_content = f.read()
-        self.assertEqual(file_content, new_content)
+        self.assertEqual(file_content, new_content + "\n")
 
     async def test_error_handling(self):
         """Test that errors from the main module are properly propagated through hot_reload_entry."""

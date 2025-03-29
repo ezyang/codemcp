@@ -206,7 +206,7 @@ nothing to commit, working tree clean""",
             # Read the content to verify it was written correctly
             with open(new_file_path) as f:
                 content = f.read()
-            self.assertEqual(content, "This file in untracked dir")
+            self.assertEqual(content, "This file in untracked dir\n")
 
             # For this test, we'll manually add and commit the file
             # This is a change in the test expectation since we don't need automatic git tracking
@@ -298,7 +298,7 @@ nothing to commit, working tree clean""",
                 # SECURITY CHECK: Read file content to confirm it was written correctly
                 with open(tracked_file_path) as f:
                     content = f.read()
-                self.assertEqual(content, "Attempt to write to git-removed file")
+                self.assertEqual(content, "Attempt to write to git-removed file\n")
 
                 # Check if the recreated file is tracked in git
                 status_after = await self.git_run(

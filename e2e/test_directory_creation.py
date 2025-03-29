@@ -55,7 +55,7 @@ class DirectoryCreationTest(MCPEndToEndTestCase):
             self.assertTrue(os.path.exists(test_file_path), "File was not created")
             with open(test_file_path) as f:
                 file_content = f.read()
-            self.assertEqual(file_content, content)
+            self.assertEqual(file_content, content + "\n")
 
     async def test_edit_file_nested_directories(self):
         """Test EditFile can create nested directories when old_string is empty."""
@@ -100,7 +100,7 @@ class DirectoryCreationTest(MCPEndToEndTestCase):
             self.assertTrue(os.path.exists(test_file_path), "File was not created")
             with open(test_file_path) as f:
                 file_content = f.read()
-            self.assertEqual(file_content, content)
+            self.assertEqual(file_content, content + "\n")
 
 
 if __name__ == "__main__":

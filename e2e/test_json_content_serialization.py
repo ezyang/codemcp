@@ -27,7 +27,7 @@ class JsonContentSerializationTest(MCPEndToEndTestCase):
         }
 
         # Expected serialized string for verification
-        expected_content = json.dumps(content_dict)
+        expected_content = json.dumps(content_dict) + "\n"
 
         async with self.create_client_session() as session:
             # First initialize project to get chat_id
@@ -70,7 +70,7 @@ class JsonContentSerializationTest(MCPEndToEndTestCase):
 
             # Test with a list
             content_list = [1, "two", 3.0, False, None]
-            expected_list_content = json.dumps(content_list)
+            expected_list_content = json.dumps(content_list) + "\n"
             list_file_path = os.path.join(self.temp_dir.name, "list_serialized.txt")
 
             # Call WriteFile with a list as content
