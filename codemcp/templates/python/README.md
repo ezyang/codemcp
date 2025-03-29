@@ -1,3 +1,3 @@
 # __PROJECT_NAME__
 
-Project description
+TODO: Write project description
