@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 from mcp.server.fastmcp import FastMCP
 
+from .common import normalize_file_path
 from .tools.chmod import chmod
 from .tools.edit_file import edit_file_content
 from .tools.glob import MAX_RESULTS, glob_files
@@ -173,13 +174,19 @@ async def codemcp(
             if path is None:
                 raise ValueError("path is required for ReadFile subtool")
 
-            return await read_file_content(path, offset, limit, chat_id)
+            # Normalize the path (expand tilde) before proceeding
+            normalized_path = normalize_file_path(path)
+
+            return await read_file_content(normalized_path, offset, limit, chat_id)
 
         if subtool == "WriteFile":
             if path is None:
                 raise ValueError("path is required for WriteFile subtool")
             if description is None:
                 raise ValueError("description is required for WriteFile subtool")
+
+            # Normalize the path (expand tilde) before proceeding
+            normalized_path = normalize_file_path(path)
 
             import json
 
@@ -191,7 +198,9 @@ async def codemcp(
 
             if chat_id is None:
                 raise ValueError("chat_id is required for WriteFile subtool")
-            return await write_file_content(path, content_str, description, chat_id)
+            return await write_file_content(
+                normalized_path, content_str, description, chat_id
+            )
 
         if subtool == "EditFile":
             if path is None:
@@ -204,6 +213,9 @@ async def codemcp(
                     "Either old_string or old_str is required for EditFile subtool (use empty string for new file creation)"
                 )
 
+            # Normalize the path (expand tilde) before proceeding
+            normalized_path = normalize_file_path(path)
+
             # Accept either old_string or old_str (prefer old_string if both are provided)
             old_content = old_string or old_str or ""
             # Accept either new_string or new_str (prefer new_string if both are provided)
@@ -211,14 +223,17 @@ async def codemcp(
             if chat_id is None:
                 raise ValueError("chat_id is required for EditFile subtool")
             return await edit_file_content(
-                path, old_content, new_content, None, description, chat_id
+                normalized_path, old_content, new_content, None, description, chat_id
             )
 
         if subtool == "LS":
             if path is None:
                 raise ValueError("path is required for LS subtool")
 
-            return await ls_directory(path, chat_id)
+            # Normalize the path (expand tilde) before proceeding
+            normalized_path = normalize_file_path(path)
+
+            return await ls_directory(normalized_path, chat_id)
 
         if subtool == "InitProject":
             if path is None:
@@ -232,8 +247,11 @@ async def codemcp(
                     False  # Default value in main.py only, not in the implementation
                 )
 
+            # Normalize the path (expand tilde) before proceeding
+            normalized_path = normalize_file_path(path)
+
             return await init_project(
-                path, user_prompt, subject_line, reuse_head_chat_id
+                normalized_path, user_prompt, subject_line, reuse_head_chat_id
             )
 
         if subtool == "RunCommand":
@@ -247,6 +265,9 @@ async def codemcp(
             if command is None:
                 raise ValueError("command is required for RunCommand subtool")
 
+            # Normalize the path (expand tilde) before proceeding
+            normalized_path = normalize_file_path(path)
+
             # Ensure chat_id is provided
             if chat_id is None:
                 raise ValueError("chat_id is required for RunCommand subtool")
@@ -258,7 +279,7 @@ async def codemcp(
                 else " ".join(arguments)
             )
             return await run_command(
-                path,
+                normalized_path,
                 command,
                 args_str,
                 chat_id,
@@ -271,8 +292,11 @@ async def codemcp(
             if path is None:
                 raise ValueError("path is required for Grep subtool")
 
+            # Normalize the path (expand tilde) before proceeding
+            normalized_path = normalize_file_path(path)
+
             try:
-                result = await grep_files(pattern, path, include, chat_id)
+                result = await grep_files(pattern, normalized_path, include, chat_id)
                 return result.get(
                     "resultForAssistant",
                     f"Found {result.get('numFiles', 0)} file(s)",
@@ -289,10 +313,13 @@ async def codemcp(
             if path is None:
                 raise ValueError("path is required for Glob subtool")
 
+            # Normalize the path (expand tilde) before proceeding
+            normalized_path = normalize_file_path(path)
+
             try:
                 result = await glob_files(
                     pattern,
-                    path,
+                    normalized_path,
                     limit=limit if limit is not None else MAX_RESULTS,
                     offset=offset if offset is not None else 0,
                     chat_id=chat_id,
@@ -318,9 +345,12 @@ async def codemcp(
             if description is None:
                 raise ValueError("description is required for RM subtool")
 
+            # Normalize the path (expand tilde) before proceeding
+            normalized_path = normalize_file_path(path)
+
             if chat_id is None:
                 raise ValueError("chat_id is required for RM subtool")
-            return await rm_file(path, description, chat_id)
+            return await rm_file(normalized_path, description, chat_id)
 
         if subtool == "Think":
             if thought is None:
@@ -334,6 +364,9 @@ async def codemcp(
             if mode is None:
                 raise ValueError("mode is required for Chmod subtool")
 
+            # Normalize the path (expand tilde) before proceeding
+            normalized_path = normalize_file_path(path)
+
             if chat_id is None:
                 raise ValueError("chat_id is required for Chmod subtool")
 
@@ -344,7 +377,7 @@ async def codemcp(
             from typing import Literal, cast
 
             chmod_mode = cast(Literal["a+x", "a-x"], mode)
-            result = await chmod(path, chmod_mode, chat_id)
+            result = await chmod(normalized_path, chmod_mode, chat_id)
             return result.get("resultForAssistant", "Chmod operation completed")
     except Exception:
         logging.error("Exception", exc_info=True)
