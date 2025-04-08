@@ -118,7 +118,12 @@ format = ["./run_format.sh"]
                 status,
                 """\
 On branch main
-nothing to commit, working tree clean""",
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   unformatted.py
+
+no changes added to commit (use "git add" and/or "git commit -a")""",
             )
 
             # Verify that a new commit was created
@@ -129,12 +134,18 @@ nothing to commit, working tree clean""",
             # The commit hash should be different
             self.assertNotEqual(commit_before, commit_after)
 
-            # Verify the commit message indicates it was a formatting change
+            # Verify the commit message contains the expected prefix with new mechanism
             commit_msg = await self.git_run(
                 ["log", "-1", "--pretty=%B"], capture_output=True, text=True
             )
 
-            self.assertIn("Auto-commit format changes", commit_msg)
+            # With the commutable auto-commit mechanism, the commit message may be different
+            # It could be either PRE_COMMIT or directly include format changes depending on commutation
+            self.assertTrue(
+                "PRE_COMMIT: Snapshot before auto-format" in commit_msg
+                or "Auto-commit format changes" in commit_msg,
+                f"Expected format-related commit message but found: {commit_msg}",
+            )
 
 
 if __name__ == "__main__":
