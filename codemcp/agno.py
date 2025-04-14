@@ -62,9 +62,7 @@ async def serve_playground_app_async(
 
 
 async def main():
-    async with MCPTools(
-        f"{sys.executable()} -m codemcp.hot_reload_entry"
-    ) as codemcp:
+    async with MCPTools(f"{sys.executable()} -m codemcp.hot_reload_entry") as codemcp:
         # TODO: cli-ify the model
         agent = Agent(
             model=Claude(id="claude-3-7-sonnet-20250219"),
