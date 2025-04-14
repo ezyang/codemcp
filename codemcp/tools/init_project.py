@@ -350,12 +350,12 @@ Before using this tool:
 
 ## EditFile chat_id path old_string new_string description
 
-This is a tool for editing files. For larger edits, use the Write tool to overwrite files.
+This is a tool for editing files. For larger edits, use the WriteFile tool to overwrite files.
 Provide a short description of the change.
 
 Before using this tool:
 
-1. Use the View tool to understand the file's contents and context
+1. Use the ReadFile tool to understand the file's contents and context
 
 2. Verify the directory path is correct (only applicable when creating new files):
    - Use the LS tool to verify the parent directory exists and is the correct location
@@ -392,11 +392,6 @@ When making edits:
    - Ensure the edit results in idiomatic, correct code
    - Do not leave the code in a broken state
    - Always use absolute file paths (starting with /)
-
-If you want to create a new file, use:
-   - A new file path, including dir name if needed
-   - An empty old_string
-   - The new file's contents as new_string
 
 Remember: when making multiple file edits in a row to the same file, you should prefer to send all edits in a single message with multiple calls to this tool, rather than multiple messages with a single call each.
 
