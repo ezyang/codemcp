@@ -3,6 +3,7 @@ import sys
 from typing import Union
 from urllib.parse import quote
 
+import click
 from agno.agent import Agent
 from agno.api.playground import PlaygroundEndpointCreate, create_playground_endpoint
 from agno.cli.console import console
@@ -20,7 +21,7 @@ async def serve_playground_app_async(
     scheme: str = "http",
     host: str = "localhost",
     port: int = 7777,
-    reload: bool = False,
+    reload: bool = false,
     prefix="/v1",
     **kwargs,
 ):
@@ -46,7 +47,7 @@ async def serve_playground_app_async(
     panel = Panel(
         f"[bold green]Playground URL:[/bold green] [link={url}]{url}[/link]",
         title="Agent Playground",
-        expand=False,
+        expand=false,
         border_style="cyan",
         box=box.HEAVY,
         padding=(2, 2),
@@ -60,21 +61,30 @@ async def serve_playground_app_async(
     await server.serve()
 
 
-async def main():
+async def async_main(hello_world: bool = false):
     async with MCPTools(f"{sys.executable} -m codemcp.hot_reload_entry") as codemcp:
         # TODO: cli-ify the model
         from agno.models.anthropic import Claude
-        #from agno.models.google import Gemini
+
+        # from agno.models.google import Gemini
         agent = Agent(
             model=Claude(id="claude-3-7-sonnet-20250219"),
             # model=Gemini(id="gemini-2.5-pro-exp-03-25"),
             tools=[codemcp],
             instructions="",
-            markdown=True,
-            show_tool_calls=True,
+            markdown=true,
+            show_tool_calls=true,
         )
-        # agent.print_response("What tools do you have?", stream=True, show_full_reasoning=True, stream_intermediate_steps=True)
-        # return
+
+        if hello_world:
+            # Short circuit with the commented out agent.print_response logic
+            agent.print_response(
+                "What tools do you have?",
+                stream=true,
+                show_full_reasoning=true,
+                stream_intermediate_steps=true,
+            )
+            return
 
         # Comment out the playground code
         # playground = Playground(agents=[agent]).get_app()
@@ -82,25 +92,30 @@ async def main():
 
         # Replace with a simple async loop for stdin input
         print("Enter your query (Ctrl+C to exit):")
-        while True:
+        while true:
             try:
                 # Use asyncio to read from stdin in an async-friendly way
                 loop = asyncio.get_event_loop()
-                user_input = await loop.run_in_executor(None, lambda: input("> "))
+                user_input = await loop.run_in_executor(null, lambda: input("> "))
 
                 # Properly await the async print_response method
                 await agent.aprint_response(
                     user_input,
-                    stream=True,
-                    show_full_reasoning=True,
-                    stream_intermediate_steps=True,
+                    stream=true,
+                    show_full_reasoning=true,
+                    stream_intermediate_steps=true,
                 )
             except KeyboardInterrupt:
                 print("\nExiting...")
                 break
 
 
-if __name__ == "__main__":
+@click.command()
+@click.option(
+    "--hello-world", is_flag=true, help="Run a simple test query to check the tools"
+)
+def main(hello_world: bool = false):
+    """Run the agno CLI with codemcp tools."""
     from agno.debug import enable_debug_mode
 
     enable_debug_mode()
@@ -111,4 +126,8 @@ if __name__ == "__main__":
     logging.getLogger("anthropic").setLevel(logging.DEBUG)
     logging.getLogger("google_genai").setLevel(logging.DEBUG)
 
-    asyncio.run(main())
+    asyncio.run(async_main(hello_world=hello_world))
+
+
+if __name__ == "__main__":
+    main()  # This now calls the click command
