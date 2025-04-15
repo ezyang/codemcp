@@ -249,33 +249,38 @@ def find_git_root(start_path: str) -> str | None:
     return None
 
 
-async def get_current_commit_hash(directory: str, short: bool = True) -> str | None:
+async def get_current_commit_hash(path: str, short: bool = True) -> str | None:
     """Get the current commit hash for the repository.
 
     This function is similar to get_head_commit_hash but designed to be used
     after operations to report the latest commit hash.
 
     Args:
-        directory: The directory to check
+        path: The path to a file or directory in the git repository
         short: Whether to get short hash (default) or full hash
 
     Returns:
         The current commit hash if available, None otherwise
 
     Raises:
-        NotADirectoryError: If the provided path is a file, not a directory
-        Exception: For other errors that should be propagated
+        Exception: For errors that should be propagated
 
     Note:
-        This function returns None for expected errors like non-git repositories,
-        but will raise exceptions for invalid inputs like file paths.
+        This function returns None for expected errors like non-git repositories.
+        This function works with both directory and file paths.
     """
     try:
-        # Check if the path is a directory
-        if os.path.isfile(directory):
-            raise NotADirectoryError(f"Not a directory: '{directory}'")
+        # Get the directory - if path is a file, use its directory
+        os.path.dirname(path) if os.path.isfile(path) else path
 
-        if not await is_git_repository(directory):
+        if not await is_git_repository(path):
+            return None
+
+        # Get the repository root for more reliable operations
+        try:
+            git_cwd = await get_repository_root(path)
+        except Exception:
+            # If we can't get the repository root, it's not a valid git repository
             return None
 
         # Get the commit hash (short or full)
@@ -286,7 +291,7 @@ async def get_current_commit_hash(directory: str, short: bool = True) -> str | N
 
         result = await run_command(
             cmd,
-            cwd=directory,
+            cwd=git_cwd,
             check=False,  # Don't raise exception if command fails
             capture_output=True,
             text=True,
@@ -295,9 +300,6 @@ async def get_current_commit_hash(directory: str, short: bool = True) -> str | N
         if result.returncode == 0:
             return str(result.stdout.strip())
         return None
-    except NotADirectoryError:
-        # Re-raise NotADirectoryError as this is an invalid input that should be handled by caller
-        raise
     except Exception as e:
         logging.warning(
             f"Exception when getting current commit hash: {e!s}", exc_info=True
