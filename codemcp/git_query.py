@@ -262,8 +262,11 @@ async def get_current_commit_hash(directory: str, short: bool = True) -> str | N
     Returns:
         The current commit hash if available, None otherwise
 
+    Raises:
+        NotADirectoryError: If the provided path is a file instead of a directory
+
     Note:
-        This function safely returns None if there are any issues getting the hash,
+        This function safely returns None for other issues getting the hash,
         rather than raising exceptions.
     """
     try:
@@ -287,6 +290,9 @@ async def get_current_commit_hash(directory: str, short: bool = True) -> str | N
         if result.returncode == 0:
             return str(result.stdout.strip())
         return None
+    except NotADirectoryError:
+        # Re-raise NotADirectoryError as a hard error
+        raise
     except Exception as e:
         logging.warning(
             f"Exception when getting current commit hash: {e!s}", exc_info=True
