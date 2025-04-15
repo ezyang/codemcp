@@ -32,6 +32,8 @@ from .tools.write_file import write_file_content
 # Initialize FastMCP server
 mcp = FastMCP("codemcp")
 
+log = logging.getLogger(__name__)
+
 
 # Helper function to get the current commit hash and append it to a result string
 async def append_commit_hash(result: str, path: str | None) -> Tuple[str, str | None]:
@@ -115,6 +117,7 @@ async def codemcp(
       reuse_head_chat_id: If True, reuse the chat ID from the HEAD commit instead of generating a new one (for InitProject)
       ... (there are other arguments which will be documented when you InitProject)
     """
+    log.debug("CALL TOOL: %s", subtool)
     try:
         # Define expected parameters for each subtool
         expected_params = {

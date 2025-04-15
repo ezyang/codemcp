@@ -262,11 +262,19 @@ async def get_current_commit_hash(directory: str, short: bool = True) -> str | N
     Returns:
         The current commit hash if available, None otherwise
 
+    Raises:
+        NotADirectoryError: If the provided path is a file, not a directory
+        Exception: For other errors that should be propagated
+
     Note:
-        This function safely returns None if there are any issues getting the hash,
-        rather than raising exceptions.
+        This function returns None for expected errors like non-git repositories,
+        but will raise exceptions for invalid inputs like file paths.
     """
     try:
+        # Check if the path is a directory
+        if os.path.isfile(directory):
+            raise NotADirectoryError(f"Not a directory: '{directory}'")
+
         if not await is_git_repository(directory):
             return None
 
@@ -287,6 +295,9 @@ async def get_current_commit_hash(directory: str, short: bool = True) -> str | N
         if result.returncode == 0:
             return str(result.stdout.strip())
         return None
+    except NotADirectoryError:
+        # Re-raise NotADirectoryError as this is an invalid input that should be handled by caller
+        raise
     except Exception as e:
         logging.warning(
             f"Exception when getting current commit hash: {e!s}", exc_info=True

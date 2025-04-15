@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+import os
 import shlex
 from typing import Any
 
@@ -52,6 +53,10 @@ async def git_diff(
 
     # Normalize the directory path
     absolute_path = normalize_file_path(path)
+
+    # Check if the path is a file rather than a directory
+    if os.path.isfile(absolute_path):
+        raise NotADirectoryError(f"Not a directory: '{path}'")
 
     # Verify this is a git repository
     if not await is_git_repository(absolute_path):
