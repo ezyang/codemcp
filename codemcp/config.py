@@ -20,6 +20,7 @@ __all__ = [
     "get_logger_verbosity",
     "get_logger_path",
     "get_line_endings_preference",
+    "git_operations_enabled",
 ]
 
 # Default configuration values
@@ -30,6 +31,9 @@ DEFAULT_CONFIG = {
     },
     "files": {
         "line_endings": None,  # Default to OS native or based on configs
+    },
+    "git": {
+        "enabled": True,  # By default, git operations are enabled
     },
 }
 
@@ -136,3 +140,14 @@ def get_line_endings_preference() -> str | None:
     """
     config = load_config()
     return config["files"]["line_endings"]
+
+
+def git_operations_enabled() -> bool:
+    """Check if Git operations are enabled in the configuration.
+
+    Returns:
+        Boolean indicating whether Git operations are enabled.
+        Default is True if not specified in the config.
+    """
+    config = load_config()
+    return config["git"]["enabled"]

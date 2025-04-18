@@ -8,6 +8,7 @@ import anyio
 
 from .access import check_edit_permission
 from .async_file_utils import OpenTextMode
+from .config import git_operations_enabled
 from .git import commit_changes
 from .line_endings import apply_line_endings, normalize_to_lf
 
@@ -55,6 +56,9 @@ async def check_git_tracking_for_existing_file(
 ) -> tuple[bool, str | None]:
     """Check if an existing file is tracked by git. Skips check for non-existent files.
 
+    If Git operations are disabled in the configuration, this function will skip
+    all Git checks and return success.
+
     Args:
         file_path: The absolute path to the file
         chat_id: The unique ID to identify the chat session
@@ -69,6 +73,13 @@ async def check_git_tracking_for_existing_file(
 
     # Normalize the path with tilde expansion
     file_path = normalize_file_path(file_path)
+
+    # If Git operations are disabled, skip all Git checks
+    if not git_operations_enabled():
+        logging.debug(
+            "Git operations are disabled in config, skipping Git tracking check"
+        )
+        return True, None
 
     # Check if the file exists
     file_exists = os.path.exists(file_path)

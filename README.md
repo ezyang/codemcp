@@ -208,6 +208,9 @@ Logs are written to `~/.codemcp/codemcp.log`. The log level can be set in a glob
 ```toml
 [logger]
 verbosity = "INFO"  # Can be DEBUG, INFO, WARNING, ERROR, or CRITICAL
+
+[git]
+enabled = true  # Set to false to disable all automatic Git operations
 ```
 
 Logging is not configurable on a per project basis, but this shouldn't matter

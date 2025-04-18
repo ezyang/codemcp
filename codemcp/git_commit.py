@@ -4,6 +4,7 @@ import logging
 import os
 import re
 
+from .config import git_operations_enabled
 from .git_message import (
     update_commit_message_with_description,
 )
@@ -31,6 +32,9 @@ async def create_commit_reference(
     in a reference (refs/codemcp/<chat_id>) without changing HEAD.  We'll use
     this to make the "real" commit once our first change happens.
 
+    If Git operations are disabled in the configuration, this function will
+    return a message indicating that Git operations are disabled.
+
     Args:
         path: The path to the file or directory to commit
         chat_id: The unique ID of the current chat session
@@ -45,6 +49,16 @@ async def create_commit_reference(
         subprocess.CalledProcessError: If a Git command fails
         Exception: For other errors during the Git operations
     """
+    # Check if Git operations are enabled
+    if not git_operations_enabled():
+        log.info(
+            "Git operations are disabled in config, skipping create_commit_reference"
+        )
+        return (
+            "Git operations are disabled in configuration, commit reference not created",
+            "",
+        )
+
     if not re.fullmatch(r"^[A-Za-z0-9-]+$", chat_id):
         raise ValueError(f"Invalid chat_id format: {chat_id}")
 
@@ -173,6 +187,9 @@ async def commit_changes(
     If commit_all is True, all changes in the repository will be committed.
     When commit_all is True, path can be None.
 
+    If Git operations are disabled in the configuration, this function will
+    return success but with a message indicating that Git operations are disabled.
+
     Args:
         path: The path to the file or directory to commit
         description: Commit message describing the change
@@ -190,6 +207,15 @@ async def commit_changes(
         chat_id,
         commit_all,
     )
+
+    # Check if Git operations are enabled
+    if not git_operations_enabled():
+        log.info("Git operations are disabled in config, skipping commit_changes")
+        return (
+            True,
+            "Git operations are disabled in configuration, changes not committed",
+        )
+
     # First, check if this is a git repository
     if not await is_git_repository(path):
         return False, f"Path '{path}' is not in a Git repository"
