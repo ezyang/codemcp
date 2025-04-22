@@ -14,6 +14,7 @@ from mcp.server.fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
+from .code_command import get_command_from_config
 from .common import normalize_file_path
 from .git_query import get_current_commit_hash
 from .tools.chmod import chmod
@@ -859,6 +860,149 @@ def run() -> None:
     """Run the MCP server."""
     configure_logging()
     mcp.run()
+
+
+@cli.command()
+@click.argument("command", type=str, required=True)
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+@click.option(
+    "--path",
+    type=click.Path(exists=True),
+    default=".",
+    help="Path to the project directory (default: current directory)",
+)
+@click.option(
+    "--no-stream",
+    is_flag=True,
+    help="Don't stream output to the terminal in real-time",
+)
+def run(command: str, args: List[str], path: str, no_stream: bool) -> None:
+    """Run a command defined in codemcp.toml.
+
+    COMMAND: The name of the command to run as defined in codemcp.toml
+    ARGS: Optional arguments to pass to the command
+    """
+    import asyncio
+    import subprocess
+    from uuid import uuid4
+
+    # Configure logging
+    configure_logging()
+
+    # Convert args tuple to a space-separated string
+    args_str = " ".join(args) if args else None
+
+    # Generate a temporary chat ID for this command
+    chat_id = str(uuid4())
+
+    # Convert to absolute path if needed
+    project_dir = normalize_file_path(path)
+
+    try:
+        # Check if command exists in config
+        command_list = get_command_from_config(project_dir, command)
+        if not command_list:
+            click.echo(
+                f"Error: Command '{command}' not found in codemcp.toml", err=True
+            )
+            return
+
+        if no_stream:
+            # Use the standard non-streaming implementation
+            result = asyncio.run(run_command(project_dir, command, args_str, chat_id))
+            click.echo(result)
+        else:
+            # Check if directory is in a git repository and commit any pending changes
+            from .git import commit_changes, is_git_repository
+
+            is_git_repo = asyncio.run(is_git_repository(project_dir))
+            if is_git_repo:
+                logging.info(f"Committing any pending changes before {command}")
+                commit_result = asyncio.run(
+                    commit_changes(
+                        project_dir,
+                        f"Snapshot before auto-{command}",
+                        chat_id,
+                        commit_all=True,
+                    )
+                )
+                if not commit_result[0]:
+                    logging.warning(
+                        f"Failed to commit pending changes: {commit_result[1]}"
+                    )
+
+            # Extend the command with arguments if provided
+            full_command = command_list.copy()
+            if args_str:
+                import shlex
+
+                parsed_args = shlex.split(args_str)
+                full_command.extend(parsed_args)
+
+            # Stream output to the terminal in real-time
+            click.echo(f"Running command: {' '.join(str(c) for c in full_command)}")
+
+            # Run the command with live output streaming
+            try:
+                process = subprocess.Popen(
+                    full_command,
+                    cwd=project_dir,
+                    stdout=None,  # Use parent's stdout/stderr (the terminal)
+                    stderr=None,
+                    text=True,
+                    bufsize=0,  # Unbuffered
+                )
+
+                try:
+                    # Wait for the process to complete
+                    exit_code = process.wait()
+                except KeyboardInterrupt:
+                    # Handle Ctrl+C gracefully
+                    process.terminate()
+                    try:
+                        process.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                    click.echo("\nProcess terminated by user.")
+                    return
+
+                # Check if command succeeded
+                if exit_code == 0:
+                    # If it's a git repo, commit any changes made by the command
+                    if is_git_repo:
+                        from .code_command import check_for_changes
+
+                        has_changes = asyncio.run(check_for_changes(project_dir))
+                        if has_changes:
+                            logging.info(
+                                f"Changes detected after {command}, committing"
+                            )
+                            success, commit_result_message = asyncio.run(
+                                commit_changes(
+                                    project_dir,
+                                    f"Auto-commit {command} changes",
+                                    chat_id,
+                                    commit_all=True,
+                                )
+                            )
+
+                            if success:
+                                click.echo(
+                                    f"\nCode {command} successful and changes committed."
+                                )
+                            else:
+                                click.echo(
+                                    f"\nCode {command} successful but failed to commit changes."
+                                )
+                                click.echo(f"Commit error: {commit_result_message}")
+                    else:
+                        click.echo(f"\nCode {command} successful.")
+                else:
+                    click.echo(f"\nCommand failed with exit code {exit_code}.")
+            except Exception as cmd_error:
+                click.echo(f"Error during command execution: {cmd_error}", err=True)
+    except Exception as e:
+        click.echo(f"Error running command: {e}", err=True)
 
 
 @cli.command()
