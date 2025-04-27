@@ -65,11 +65,27 @@ async def write_file_content(
 
     # Try to run the formatter on the file
     format_message = ""
-    formatter_success, formatter_output = await run_formatter_without_commit(file_path)
+    post_format_content = content
+    (
+        formatter_success,
+        formatter_output,
+        post_format_content,
+    ) = await run_formatter_without_commit(file_path)
     if formatter_success:
         logging.info(f"Auto-formatted {file_path}")
         if formatter_output.strip():
-            format_message = f"\nAuto-formatted the file"
+            # If the file was actually changed by the formatter
+            if post_format_content and post_format_content != content:
+                # Update the content in memory (it's already updated on disk)
+                content = post_format_content
+
+                # Show a snippet of the formatted content (first few lines)
+                lines = post_format_content.split("\n")
+                snippet_lines = min(7, len(lines))  # Show up to 7 lines
+                snippet = "\n".join(lines[:snippet_lines])
+                format_message = (
+                    f"\nAuto-formatted the file. Here's how it looks now:\n{snippet}"
+                )
     else:
         # Only log warning if there was actually a format command configured but it failed
         if not "No format command configured" in formatter_output:

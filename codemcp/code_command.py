@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 import tomli
 
 from .common import normalize_file_path, truncate_output_content
+from .file_utils import async_open_text
 from .git import commit_changes, get_repository_root, is_git_repository
 from .shell import run_command
 
@@ -218,14 +219,15 @@ async def run_code_command(
         return f"Error: {error_msg}"
 
 
-async def run_formatter_without_commit(file_path: str) -> Tuple[bool, str]:
+async def run_formatter_without_commit(file_path: str) -> Tuple[bool, str, str]:
     """Run the formatter on a specific file without performing pre/post commit operations.
 
     Args:
         file_path: Absolute path to the file to format
 
     Returns:
-        A tuple containing (success_status, message)
+        A tuple containing (success_status, message, post_format_content)
+        The post_format_content will be an empty string if formatting failed
 
     Raises:
         Propagates any unexpected errors during formatting
@@ -236,7 +238,7 @@ async def run_formatter_without_commit(file_path: str) -> Tuple[bool, str]:
     # Get the format command from config - this is the only expected failure mode
     format_command = get_command_from_config(project_dir, "format")
     if not format_command:
-        return False, "No format command configured in codemcp.toml"
+        return False, "No format command configured in codemcp.toml", ""
 
     # Use relative path from project_dir for the formatting command
     rel_path = os.path.relpath(file_path, project_dir)
@@ -251,6 +253,18 @@ async def run_formatter_without_commit(file_path: str) -> Tuple[bool, str]:
         text=True,
     )
 
+    # Read the file after formatting to get the current content
+    post_format_content = ""
+    if os.path.exists(file_path):
+        try:
+            post_format_content = await async_open_text(file_path, encoding="utf-8")
+        except Exception as e:
+            logging.warning(f"Failed to read formatted file: {e}")
+
     # If we get here, the formatter ran successfully
     truncated_stdout = truncate_output_content(result.stdout, prefer_end=True)
-    return True, f"File formatted successfully:\n{truncated_stdout}"
+    return (
+        True,
+        f"File formatted successfully:\n{truncated_stdout}",
+        post_format_content,
+    )
