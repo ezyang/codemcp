@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-from typing import List, Union
+from typing import List, Optional, Union
 
 # Constants
 MAX_LINES_TO_READ = 1000
@@ -19,6 +19,7 @@ __all__ = [
     "normalize_file_path",
     "get_edit_snippet",
     "truncate_output_content",
+    "find_codemcp_root",
 ]
 
 
@@ -157,3 +158,35 @@ def truncate_output_content(
             truncated_content += f"\n... (output truncated, showing {MAX_LINES_TO_READ} of {total_lines} lines)"
 
     return truncated_content
+
+
+def find_codemcp_root(start_path: str) -> Optional[str]:
+    """Find the root directory containing codemcp.toml, starting from the given path.
+
+    This function traverses up the directory tree from the given path until it finds
+    a directory containing a codemcp.toml file, which indicates the project root.
+
+    Args:
+        start_path: The path to start searching from (can be a file or directory)
+
+    Returns:
+        The absolute path to the directory containing codemcp.toml, or None if not found
+    """
+    path = os.path.abspath(start_path)
+
+    # If the path is a file, start from its parent directory
+    if os.path.isfile(path):
+        path = os.path.dirname(path)
+
+    while path:
+        config_path = os.path.join(path, "codemcp.toml")
+        if os.path.isfile(config_path):
+            return path
+
+        parent = os.path.dirname(path)
+        if parent == path:  # Reached filesystem root
+            return None
+
+        path = parent
+
+    return None
