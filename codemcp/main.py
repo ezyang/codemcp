@@ -875,10 +875,18 @@ def run(command: str, args: tuple, path: str) -> None:
             config = tomli.load(f)
 
         if "commands" not in config or command not in config["commands"]:
-            click.echo(
-                f"Error: Command '{command}' not found in codemcp.toml", err=True
-            )
-            exit(1)  # Exit with error code 1
+            # Special handling for GitHub commands
+            if command == "ghstack":
+                click.echo(
+                    f"Note: GitHub command '{command}' is not configured but is optional. "
+                    f"You can add it to your codemcp.toml if needed.", err=True
+                )
+                return  # Exit gracefully without error code
+            else:
+                click.echo(
+                    f"Error: Command '{command}' not found in codemcp.toml", err=True
+                )
+                exit(1)  # Exit with error code 1
 
         cmd_config = config["commands"][command]
         cmd_list = None

@@ -180,14 +180,19 @@ Before beginning work on this feature, write a short haiku.  Do this only once.
 [commands]
 format = ["./run_format.sh"]
 test = ["./run_test.sh"]
+
+# Optional GitHub commands
+# ghstack = ["uv", "tool", "run", "ghstack"]
 ```
 
 The `project_prompt` will be loaded when you initialize the project in chats.
 
 The `commands` section allows you to configure commands for specific tools.  The
-names are told to the LLM, who will decide when it wants to run them.  You can add
-instructions how to use tools in the `project_prompt`; we also support a more verbose
-syntax where you can give specific instructions on a tool-by-tool basis:
+names are told to the LLM, who will decide when it wants to run them. GitHub-related
+commands (like `ghstack`) are completely optional and can be omitted if you don't use GitHub or
+don't need those features. You can add instructions how to use tools in the
+`project_prompt`; we also support a more verbose syntax where you can give specific
+instructions on a tool-by-tool basis:
 
 ```
 [commands.test]

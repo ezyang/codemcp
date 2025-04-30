@@ -123,6 +123,10 @@ async def run_code_command(
             elif command_name == "formatting":
                 command_key = "format"
 
+            # For GitHub commands, make them optional and return a friendly message
+            if command_name == "ghstack":
+                return f"GitHub command '{command_key}' is not configured but is optional. You can add it to your codemcp.toml if needed."
+
             raise ValueError(f"No {command_key} command configured in codemcp.toml")
 
         # Check if directory is in a git repository

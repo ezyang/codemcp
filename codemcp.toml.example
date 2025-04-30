@@ -14,3 +14,12 @@ path = "~/.codemcp"
 # LF = Unix/Linux/macOS style (\n)
 # CRLF = Windows style (\r\n)
 line_endings = null  # null means auto-detect from .editorconfig, .gitattributes, or OS
+
+[commands]
+# Optional - Define commands to run within the project
+# format = ["./run_format.sh"]
+# lint = ["./run_lint.sh"]
+# typecheck = ["./run_typecheck.sh"]
+
+# Optional GitHub commands - these are not required for basic functionality
+# ghstack = ["uv", "tool", "run", "ghstack"]
