@@ -57,7 +57,7 @@ async def run_command(
     """
     # Log the command being run at INFO level
     log_cmd = " ".join(str(c) for c in cmd)
-    logging.info(f"Running command: {log_cmd}")
+    logging.info(f"Running cVALDLLDommand!!!!!!!: {log_cmd}")
 
     # Prepare stdout and stderr pipes
     stdout_pipe = asyncio.subprocess.PIPE if capture_output else None
@@ -97,21 +97,21 @@ async def run_command(
     if capture_output:
         if text and stdout_data:
             stdout = stdout_data.decode()
-            logging.debug(f"Command stdout: {stdout}")
+            logging.info(f"Command stdout: {stdout}")
         elif stdout_data:
             stdout = stdout_data
-            logging.debug(f"Command stdout: {len(stdout_data)} bytes")
+            logging.info(f"Command stdout: {len(stdout_data)} bytes")
 
         if text and stderr_data:
             stderr = stderr_data.decode()
-            logging.debug(f"Command stderr: {stderr}")
+            logging.info(f"Command stderr: {stderr}")
         elif stderr_data:
             stderr = stderr_data
-            logging.debug(f"Command stderr: {len(stderr_data)} bytes")
+            logging.info(f"Command stderr: {len(stderr_data)} bytes")
 
     # Log the return code
     returncode = process.returncode
-    logging.debug(f"Command return code: {returncode}")
+    logging.info(f"Command return code: {returncode}")
 
     # Create a CompletedProcess object to maintain compatibility
     result = subprocess.CompletedProcess[Union[str, bytes]](

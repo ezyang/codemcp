@@ -95,7 +95,7 @@ def match_file_with_glob(file_path: str, glob_pattern: str) -> bool:
     Returns:
         True if the file matches the pattern, False otherwise
     """
-    logging.debug(
+    logging.info(
         f"match_file_with_glob: checking if '{file_path}' matches pattern '{glob_pattern}'"
     )
 
@@ -114,7 +114,7 @@ def match_file_with_glob(file_path: str, glob_pattern: str) -> bool:
     if "/" not in glob_pattern:
         file_name = path.name
         result = glob_match(glob_pattern, file_name)
-        logging.debug(
+        logging.info(
             f"Filename match: pattern='{glob_pattern}', file='{file_name}', result={result}"
         )
         return result
@@ -122,7 +122,7 @@ def match_file_with_glob(file_path: str, glob_pattern: str) -> bool:
     # Use the glob matcher from glob.py for full path matching
     # Cursor rules use vanilla glob patterns (not editorconfig features)
     result = glob_match(glob_pattern, normalized_path)
-    logging.debug(
+    logging.info(
         f"Path match: pattern='{glob_pattern}', path='{normalized_path}', result={result}"
     )
     return result
@@ -151,7 +151,7 @@ def find_applicable_rules(
 
     # Normalize paths
     repo_root = os.path.abspath(repo_root)
-    logging.debug(
+    logging.info(
         f"Finding applicable rules for repo_root={repo_root}, file_path={file_path}"
     )
 
@@ -159,27 +159,27 @@ def find_applicable_rules(
     # Otherwise, just check repo_root
     start_dir = os.path.dirname(os.path.abspath(file_path)) if file_path else repo_root
     current_dir = start_dir
-    logging.debug(f"Starting directory search at: {current_dir}")
+    logging.info(f"Starting directory search at: {current_dir}")
 
     # Ensure we don't go beyond repo_root
     while current_dir.startswith(repo_root):
         # Look for .cursor/rules directory
         rules_dir = os.path.join(current_dir, ".cursor", "rules")
-        logging.debug(f"Checking for rules directory: {rules_dir}")
+        logging.info(f"Checking for rules directory: {rules_dir}")
 
         if os.path.isdir(rules_dir):
-            logging.debug(f"Found rules directory: {rules_dir}")
+            logging.info(f"Found rules directory: {rules_dir}")
 
             # Find all MDC files in this directory
             for root, _, files in os.walk(rules_dir):
                 for filename in files:
                     if filename.endswith(".mdc"):
                         rule_file_path = os.path.join(root, filename)
-                        logging.debug(f"Considering rule file: {rule_file_path}")
+                        logging.info(f"Considering rule file: {rule_file_path}")
 
                         # Skip if we've already processed this file
                         if rule_file_path in processed_rule_files:
-                            logging.debug(
+                            logging.info(
                                 f"Skipping already processed rule file: {rule_file_path}"
                             )
                             continue
@@ -188,22 +188,22 @@ def find_applicable_rules(
                         # Load the rule
                         rule = load_rule_from_file(rule_file_path)
                         if rule is None:
-                            logging.debug(
+                            logging.info(
                                 f"Failed to load rule from file: {rule_file_path}"
                             )
                             continue
 
                         # Check if this rule applies
                         if rule.always_apply:
-                            logging.debug(f"Rule always applies: {rule_file_path}")
+                            logging.info(f"Rule always applies: {rule_file_path}")
                             applicable_rules.append(rule)
                         elif file_path and rule.globs:
                             # Check if any glob pattern matches the file
-                            logging.debug(
+                            logging.info(
                                 f"Checking glob patterns for rule: {rule_file_path}"
                             )
                             for glob_pattern in rule.globs:
-                                logging.debug(
+                                logging.info(
                                     f"Testing glob pattern: {glob_pattern} against file: {file_path}"
                                 )
                                 # Convert absolute path to relative path if needed
@@ -212,40 +212,40 @@ def find_applicable_rules(
                                     rel_file_path = os.path.relpath(
                                         file_path, repo_root
                                     )
-                                    logging.debug(
+                                    logging.info(
                                         f"Converting absolute path to relative: {file_path} → {rel_file_path}"
                                     )
 
                                 if match_file_with_glob(rel_file_path, glob_pattern):
-                                    logging.debug(
+                                    logging.info(
                                         f"Glob pattern matched: {glob_pattern}"
                                     )
                                     applicable_rules.append(rule)
                                     break
                                 else:
-                                    logging.debug(
+                                    logging.info(
                                         f"Glob pattern did not match: {glob_pattern}"
                                     )
                         elif rule.description:
                             # Add to suggested rules if it has a description
-                            logging.debug(
+                            logging.info(
                                 f"Adding rule to suggested rules: {rule_file_path}"
                             )
                             suggested_rules.append((rule.description, rule_file_path))
                         else:
-                            logging.debug(
+                            logging.info(
                                 f"Rule not applicable (no globs match or missing description): {rule_file_path}"
                             )
 
         # Move up one directory
         parent_dir = os.path.dirname(current_dir)
         if parent_dir == current_dir:  # We've reached the root
-            logging.debug("Reached filesystem root, stopping directory traversal")
+            logging.info("Reached filesystem root, stopping directory traversal")
             break
         current_dir = parent_dir
-        logging.debug(f"Moving up to parent directory: {current_dir}")
+        logging.info(f"Moving up to parent directory: {current_dir}")
 
-    logging.debug(
+    logging.info(
         f"Found {len(applicable_rules)} applicable rules and {len(suggested_rules)} suggested rules"
     )
     return applicable_rules, suggested_rules
@@ -267,26 +267,26 @@ def get_applicable_rules_content(
         A formatted string containing all applicable rules, or an empty string if no rules apply
     """
     try:
-        logging.debug(
+        logging.info(
             f"get_applicable_rules_content called with repo_root={repo_root}, file_path={file_path}"
         )
         result = ""
 
         # Find applicable rules
         applicable_rules, suggested_rules = find_applicable_rules(repo_root, file_path)
-        logging.debug(
+        logging.info(
             f"Retrieved {len(applicable_rules)} applicable rules and {len(suggested_rules)} suggested rules"
         )
 
         # If we have applicable rules, add them to the output
         if applicable_rules or suggested_rules:
             result += "\n\n// .cursor/rules results:"
-            logging.debug("Adding rule results to output")
+            logging.info("Adding rule results to output")
 
             # Add directly applicable rules
             for i, rule in enumerate(applicable_rules):
                 rel_path = os.path.relpath(rule.file_path, repo_root)
-                logging.debug(
+                logging.info(
                     f"Adding applicable rule {i + 1}/{len(applicable_rules)}: {rel_path}"
                 )
                 rule_content = f"\n\n// Rule from {rel_path}:\n{rule.payload}"
@@ -295,14 +295,14 @@ def get_applicable_rules_content(
             # Add suggestions for rules with descriptions
             for i, (description, rule_path) in enumerate(suggested_rules):
                 rel_path = os.path.relpath(rule_path, repo_root)
-                logging.debug(
+                logging.info(
                     f"Adding suggested rule {i + 1}/{len(suggested_rules)}: {rel_path} ('{description}')"
                 )
                 result += f"\n\n// If {description} applies, load {rel_path}"
         else:
-            logging.debug("No applicable or suggested rules found")
+            logging.info("No applicable or suggested rules found")
 
-        logging.debug(f"Returning {len(result)} characters of rule content")
+        logging.info(f"Returning {len(result)} characters of rule content")
         return result
     except Exception as e:
         # Log the exception but don't propagate it

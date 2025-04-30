@@ -106,7 +106,7 @@ async def apply_edit(
     if old_string in content:
         updated_file = content.replace(old_string, new_string, 1)
     else:
-        logger.debug("All matching techniques failed. No changes made.")
+        logger.info("All matching techniques failed. No changes made.")
         updated_file = content
 
     # Create a useful diff/patch structure
@@ -501,7 +501,7 @@ def replace_most_similar_chunk(whole: str, part: str, replace: str) -> str | Non
         if res:
             return res
     except ValueError as e:
-        logger.debug(f"Dotdotdots matching failed: {e!s}")
+        logger.info(f"Dotdotdots matching failed: {e!s}")
         # continue with other matching strategies
 
     # Try fuzzy matching
@@ -534,34 +534,34 @@ def debug_string_comparison(
     length_same = len(s1) == len(s2)
     content_same = s1 == s2
 
-    logger.debug("String comparison debug:")
-    logger.debug(f"  Length same? {length_same} ({len(s1)} vs {len(s2)})")
-    logger.debug(f"  Content same? {content_same}")
+    logger.info("String comparison debug:")
+    logger.info(f"  Length same? {length_same} ({len(s1)} vs {len(s2)})")
+    logger.info(f"  Content same? {content_same}")
 
     # Hash check
     hash1 = hashlib.md5(s1.encode("utf-8")).hexdigest()
     hash2 = hashlib.md5(s2.encode("utf-8")).hexdigest()
-    logger.debug(f"  MD5 hashes: {hash1} vs {hash2}")
+    logger.info(f"  MD5 hashes: {hash1} vs {hash2}")
 
     # If strings appear to be the same but should be different
     if content_same:
         # Check for invisible characters or encoding issues
         s1_repr = repr(s1)
         s2_repr = repr(s2)
-        logger.debug(f"  Repr comparison: {s1_repr[:100]} vs {s2_repr[:100]}")
+        logger.info(f"  Repr comparison: {s1_repr[:100]} vs {s2_repr[:100]}")
 
         # Check byte by byte
         bytes1 = s1.encode("utf-8")
         bytes2 = s2.encode("utf-8")
         if bytes1 != bytes2:
-            logger.debug(
+            logger.info(
                 "  Strings differ at byte level even though they appear equal as strings!",
             )
 
             # Find the first differing byte
             for i, (b1, b2) in enumerate(zip(bytes1, bytes2, strict=False)):
                 if b1 != b2:
-                    logger.debug(
+                    logger.info(
                         f"  First byte difference at position {i}: {b1} vs {b2}",
                     )
                     break
@@ -570,15 +570,15 @@ def debug_string_comparison(
         diff = list(difflib.ndiff(s1.splitlines(), s2.splitlines()))
         changes = [d for d in diff if d.startswith("+ ") or d.startswith("- ")]
         if changes:
-            logger.debug("  Line differences (first 5):")
+            logger.info("  Line differences (first 5):")
             for d in changes[:5]:
-                logger.debug(f"    {d}")
+                logger.info(f"    {d}")
 
         # Check if strings are equal after stripping trailing whitespace
         s1_no_trailing = "\n".join([line.rstrip() for line in s1.splitlines()])
         s2_no_trailing = "\n".join([line.rstrip() for line in s2.splitlines()])
         if s1_no_trailing == s2_no_trailing:
-            logger.debug(
+            logger.info(
                 "  Strings match when trailing whitespace is stripped from each line!",
             )
 
@@ -590,7 +590,7 @@ def debug_string_comparison(
             [line.rstrip() if line.strip() == "" else line for line in s2.splitlines()],
         )
         if s1_normalized == s2_normalized:
-            logger.debug("  Strings match when normalizing only whitespace-only lines!")
+            logger.info("  Strings match when normalizing only whitespace-only lines!")
 
     return not content_same
 
@@ -736,7 +736,7 @@ async def edit_file_content(
             test_result = try_dotdotdots(content, old_string, new_string)
             if test_result:
                 # If it worked with dotdotdots, we're good to proceed
-                logger.debug(
+                logger.info(
                     "Successfully used dotdotdots strategy to handle multiple occurrences",
                 )
             else:

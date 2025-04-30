@@ -13,9 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from mcp.server.fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
-
 from .common import normalize_file_path
-from .git_query import get_current_commit_hash
+# from .git_query import get_current_commit_hash
 from .tools.chmod import chmod
 from .tools.edit_file import edit_file_content
 from .tools.glob import MAX_RESULTS, glob_files
@@ -52,7 +51,7 @@ async def append_commit_hash(result: str, path: str | None) -> Tuple[str, str | 
         return result, None
 
     try:
-        current_hash = await get_current_commit_hash(path)
+        current_hash = None
         if current_hash:
             return f"{result}\n\nCurrent commit hash: {current_hash}", current_hash
     except Exception as e:
@@ -570,7 +569,7 @@ def configure_logging(log_file: str = "codemcp.log") -> None:
 
     # Map string log level to logging constants
     log_level_map = {
-        "DEBUG": logging.DEBUG,
+        "DEBUG": logging.info,
         "INFO": logging.INFO,
         "WARNING": logging.WARNING,
         "ERROR": logging.ERROR,
@@ -583,7 +582,7 @@ def configure_logging(log_file: str = "codemcp.log") -> None:
     # Force DEBUG level if DESKAID_DEBUG is set (for backward compatibility)
     debug_mode = False
     if os.environ.get("DESKAID_DEBUG"):
-        log_level = logging.DEBUG
+        log_level = logging.info
         debug_mode = True
 
     # Create a root logger
@@ -733,13 +732,7 @@ def init_codemcp_project(path: str, python: bool = False) -> str:
     # Make initial commit if there are no commits yet
     try:
         # Check if there are any commits
-        result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=project_path,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        logging.info("Mark here")
 
         if result.returncode != 0 and files_to_add:
             # No commits yet, add files and make initial commit
@@ -841,7 +834,7 @@ def serve(host: str, port: int, cors_origin: List[str]) -> None:
     By default, it allows CORS requests from claude.ai.
     """
     configure_logging()
-    logging.info(f"Starting MCP SSE server on {host}:{port}")
+    logging.info(f"Starting MCP 111SSE server on {host}:{port}")
 
     # If no origins provided, use the default
     allowed_origins = list(cors_origin) if cors_origin else None

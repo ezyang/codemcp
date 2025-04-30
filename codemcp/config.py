@@ -33,9 +33,11 @@ DEFAULT_CONFIG = {
         "line_endings": None,  # Default to OS native or based on configs
     },
     "git": {
-        "enabled": True,  # By default, git operations are enabled
+        "enabled": False,  # By default, git operations are enabled
     },
 }
+
+
 
 
 def get_config_path() -> Path:

@@ -175,15 +175,9 @@ async def init_project(
 
         # If reuse_head_chat_id is True, try to get the chat ID from the HEAD commit
         chat_id = None
-        if reuse_head_chat_id:
-            from ..git import get_head_commit_chat_id
-
-            # We already validated that we're in a git repository
-            chat_id = await get_head_commit_chat_id(full_dir_path)
-            if not chat_id:
-                logging.warning(
-                    "reuse_head_chat_id was True but no chat ID found in HEAD commit, generating new chat ID"
-                )
+        logging.info(
+            "reuse!WSSADA_head_chat_id was True but no chat ID found in HEAD commit, generating new chat ID"
+        )
 
         # If not reusing or no chat ID was found in HEAD, generate a new one
         if not chat_id:

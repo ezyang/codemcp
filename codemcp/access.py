@@ -30,7 +30,7 @@ async def get_git_base_dir(file_path: str) -> str:
 
     # Use get_repository_root which handles non-existent paths and walks up directories
     git_base_dir = await get_repository_root(normalized_path)
-    logging.debug(f"Git base directory: {git_base_dir}")
+    logging.info(f"Git base directory: {git_base_dir}")
 
     # SECURITY CHECK: Ensure file_path is within the git repository
     # This prevents path traversal across repositories
@@ -45,7 +45,7 @@ async def get_git_base_dir(file_path: str) -> str:
 
     # If the relative path starts with "..", it's outside the git repo
     if rel_path.startswith("..") or rel_path == "..":
-        logging.debug(
+        logging.info(
             f"Path traversal check: {normalized_path} is outside git repo {normalized_git_base}"
         )
 
@@ -55,7 +55,7 @@ async def get_git_base_dir(file_path: str) -> str:
             normalized_git_base in normalized_path
             or normalized_path in normalized_git_base
         ):
-            logging.debug(
+            logging.info(
                 f"Path might be the same location after symlinks: {normalized_path}, {normalized_git_base}"
             )
         else:

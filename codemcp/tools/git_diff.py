@@ -65,7 +65,7 @@ async def git_diff(
         parsed_args = shlex.split(arguments)
         cmd.extend(parsed_args)
 
-    logging.debug(f"Executing git diff command: {' '.join(cmd)}")
+    logging.info(f"Executing git diff command: {' '.join(cmd)}")
 
     # Execute git diff command asynchronously
     result = await run_command(

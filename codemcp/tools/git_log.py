@@ -64,7 +64,7 @@ async def git_log(
         parsed_args = shlex.split(arguments)
         cmd.extend(parsed_args)
 
-    logging.debug(f"Executing git log command: {' '.join(cmd)}")
+    logging.info(f"Executing git log command: {' '.join(cmd)}")
 
     # Execute git log command asynchronously
     result = await run_command(

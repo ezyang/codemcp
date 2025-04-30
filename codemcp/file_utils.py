@@ -76,7 +76,7 @@ async def check_git_tracking_for_existing_file(
 
     # If Git operations are disabled, skip all Git checks
     if not git_operations_enabled():
-        logging.debug(
+        logging.info(
             "Git operations are disabled in config, skipping Git tracking check"
         )
         return True, None
@@ -114,9 +114,9 @@ async def check_git_tracking_for_existing_file(
         )
 
         if not commit_success:
-            logging.debug(f"Failed to commit pending changes: {commit_message}")
+            logging.info(f"Failed to commit pending changes: {commit_message}")
         else:
-            logging.debug(f"Pending changes status: {commit_message}")
+            logging.info(f"Pending changes status: {commit_message}")
 
     return True, None
 

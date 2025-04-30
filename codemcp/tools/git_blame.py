@@ -64,7 +64,7 @@ async def git_blame(
         parsed_args = shlex.split(arguments)
         cmd.extend(parsed_args)
 
-    logging.debug(f"Executing git blame command: {' '.join(cmd)}")
+    logging.info(f"Executing git blame command: {' '.join(cmd)}")
 
     # Execute git blame command asynchronously
     result = await run_command(

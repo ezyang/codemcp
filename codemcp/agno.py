@@ -121,10 +121,10 @@ def cli(hello_world: bool = False):
     enable_debug_mode()
     import logging
 
-    logging.basicConfig(level=logging.DEBUG)
-    logging.getLogger("httpx").setLevel(logging.DEBUG)  # For HTTP logging
-    logging.getLogger("anthropic").setLevel(logging.DEBUG)
-    logging.getLogger("google_genai").setLevel(logging.DEBUG)
+    logging.basicConfig(level=logging.info)
+    logging.getLogger("httpx").setLevel(logging.info)  # For HTTP logging
+    logging.getLogger("anthropic").setLevel(logging.info)
+    logging.getLogger("google_genai").setLevel(logging.info)
 
     asyncio.run(main(hello_world=hello_world))
 

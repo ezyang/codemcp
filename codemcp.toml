@@ -1,36 +1,10 @@
 project_prompt = '''
-- Before beginning work on this feature, write a short haiku.
-- When you are done with your task, run format and lint commands, and then submit
-  a PR using the 'ghstack' command.
-- We ONLY write end to end tests, do NOT use mocks.
-- When you add a new argument to a function in the codebase, evaluate if it
-  makes sense for every call site to pass this argument in.  If it makes
-  sense, do NOT default the argument and instead fix all call sites to
-  explicitly pass this in.  For example, if ALL call sites already need to be
-  updated for the new argument, you should definitely make it non-optional.
-- When you make a new tool, the prompt goes in system_prompt in
-  codecmp/tools/init_project.py
-- If an operation may fail, do NOT wrap it with a try-catch block to suppress
-  error and do some fallback handling.  Instead, let the exception propagate
-  to the top level so we can properly report it.  If you are trying to fix a test
-  because an exception is being thrown in this way, reason about what invariant
-  is being violated that is causing the exception to be thrown.
-- If you are trying to fix a test because an assert has failed, DO NOT remove
-  the assert. Instead, try to reason about what bug could be causing the
-  invariant to be violated. If you can't figure it out, ask the user to help
-  and halt.
-- End-to-end tests which call into codemcp function go in e2e/; unit tests for
-  purely functional code go in tests/
+- Before beginning work on this feature, write a short haiku. Only do this once.
 '''
 
 [commands]
 format = ["./run_format.sh"]
 lint = ["./run_lint.sh"]
-ghstack = ["uv", "tool", "run", "ghstack"]
-typecheck = ["./run_typecheck.sh"]
-[commands.test]
-command = ["./run_test.sh"]
-doc = "Accepts a pytest-style test selector as an argument to run a specific test."
-[commands.accept]
-command = ["env", "EXPECTTEST_ACCEPT=1", "./run_test.sh"]
-doc = "Updates expecttest failing tests with their new values, akin to running with EXPECTTEST_ACCEPT=1. Accepts a pytest-style test selector as an argument to run a specific test."
+
+[git]
+enabled = false

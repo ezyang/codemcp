@@ -96,7 +96,7 @@ async def git_grep(
     elif include:
         args.extend(["--", include])
 
-    logging.debug(f"Executing git grep command: {' '.join(args)}")
+    logging.info(f"Executing git grep command: {' '.join(args)}")
 
     try:
         # Execute git grep command asynchronously
