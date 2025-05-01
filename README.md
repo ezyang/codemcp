@@ -39,7 +39,7 @@ Create or edit your `~/.config/anthropic/claude/claude_desktop_config.json` file
 {
   "mcpServers": {
     "codemcp": {
-      "command": "/Users//.local/bin/uvx",
+      "command": "/Users/<USERNAME>/.local/bin/uvx",
       "args": [
         "--from",
         "git+https://github.com/ezyang/codemcp@prod",
@@ -58,7 +58,7 @@ Create or edit your `%USERPROFILE%\.anthropic\claude\claude_desktop_config.json`
 {
   "mcpServers": {
     "codemcp": {
-      "command": "C:\\Users\\\\.local\\bin\\uvx.exe",
+      "command": "C:\\Users\\<USERNAME>\\.local\\bin\\uvx.exe",
       "args": [
         "--from",
         "git+https://github.com/ezyang/codemcp@prod",
