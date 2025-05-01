@@ -1,4 +1,5 @@
 # codemcp
+[![smithery badge](https://smithery.ai/badge/@ezyang/codemcp)](https://smithery.ai/server/@ezyang/codemcp)
 
 Make Claude Desktop a pair programming assistant by installing codemcp.  With
 it, you can directly ask Claude to implement features, fix bugs and do
@@ -114,6 +115,14 @@ After configuring, restart Claude Desktop. The hammer icon should appear, indica
 Restart the Claude Desktop app after modifying the JSON.  If the MCP
 successfully loaded, a hammer icon will appear and when you click it "codemcp"
 will be visible.
+
+### Installing via Smithery
+
+To install Deskaid for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@ezyang/codemcp):
+
+```bash
+npx -y @smithery/cli install @ezyang/codemcp --client claude
+```
 
 ### Global install with pip
 
