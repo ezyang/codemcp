@@ -4,8 +4,11 @@ import os
 import stat
 from typing import Any, Literal
 
+from mcp.server.fastmcp import Context
+
 from ..common import normalize_file_path
 from ..git import commit_changes
+from ..main import get_chat_id_from_context, mcp
 from ..shell import run_command
 
 __all__ = [
@@ -13,12 +16,13 @@ __all__ = [
     "render_result_for_assistant",
     "TOOL_NAME_FOR_PROMPT",
     "DESCRIPTION",
+    "chmod_tool",
 ]
 
 TOOL_NAME_FOR_PROMPT = "Chmod"
 DESCRIPTION = """
-Changes file permissions using chmod. Unlike standard chmod, this tool only supports 
-a+x (add executable permission) and a-x (remove executable permission), because these 
+Changes file permissions using chmod. Unlike standard chmod, this tool only supports
+a+x (add executable permission) and a-x (remove executable permission), because these
 are the only bits that git knows how to track.
 
 Example:
@@ -129,3 +133,23 @@ def render_result_for_assistant(output: dict[str, Any]) -> str:
         A formatted string representation of the results
     """
     return output.get("output", "")
+
+
+@mcp.tool()
+async def chmod_tool(ctx: Context, path: str, mode: Literal["a+x", "a-x"]) -> str:
+    """Changes file permissions using chmod. Unlike standard chmod, this tool only supports
+    a+x (add executable permission) and a-x (remove executable permission), because these
+    are the only bits that git knows how to track.
+
+    Args:
+        path: The absolute path to the file to modify
+        mode: The chmod mode to apply, only "a+x" and "a-x" are supported
+
+    Example:
+      chmod a+x path/to/file  # Makes a file executable by all users
+      chmod a-x path/to/file  # Makes a file non-executable for all users
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    result = await chmod(path, mode, chat_id)
+    return result.get("resultForAssistant", "Chmod operation completed")

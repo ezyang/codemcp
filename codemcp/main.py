@@ -10,7 +10,7 @@ import click
 import pathspec
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
@@ -32,6 +32,13 @@ from .tools.write_file import write_file_content
 
 # Initialize FastMCP server
 mcp = FastMCP("codemcp")
+
+
+# Helper function to get a chat_id from a Context
+def get_chat_id_from_context(ctx: Context) -> str:
+    # Generate a chat_id from the context
+    ctx_id = getattr(ctx, "id", None)
+    return f"{ctx_id}" if ctx_id else "default"
 
 
 # Helper function to get the current commit hash and append it to a result string
@@ -62,8 +69,8 @@ async def append_commit_hash(result: str, path: str | None) -> Tuple[str, str | 
     return result, current_hash
 
 
-# NB: If you edit this, also edit codemcp/tools/init_project.py
-@mcp.tool()
+# This function is kept for backward compatibility but is no longer directly exposed as a tool
+# Each subtool is individually exposed as a top-level MCP tool
 async def codemcp(
     subtool: str,
     *,

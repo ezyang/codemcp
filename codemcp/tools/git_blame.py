@@ -2,10 +2,13 @@
 
 import logging
 import shlex
-from typing import Any
+from typing import Any, Optional
+
+from mcp.server.fastmcp import Context
 
 from ..common import normalize_file_path
 from ..git import is_git_repository
+from ..main import get_chat_id_from_context, mcp
 from ..shell import run_command
 
 __all__ = [
@@ -13,6 +16,7 @@ __all__ = [
     "render_result_for_assistant",
     "TOOL_NAME_FOR_PROMPT",
     "DESCRIPTION",
+    "git_blame_tool",
 ]
 
 TOOL_NAME_FOR_PROMPT = "GitBlame"
@@ -96,3 +100,24 @@ def render_result_for_assistant(output: dict[str, Any]) -> str:
         A formatted string representation of the results
     """
     return output.get("output", "")
+
+
+@mcp.tool()
+async def git_blame_tool(
+    ctx: Context, path: str, arguments: Optional[str] = None
+) -> str:
+    """Shows what revision and author last modified each line of a file using git blame.
+    This tool is read-only and safe to use with any arguments.
+    The arguments parameter should be a string and will be interpreted as space-separated
+    arguments using shell-style tokenization (spaces separate arguments, quotes can be used
+    for arguments containing spaces, etc.).
+
+    Example:
+      git blame path/to/file  # Show blame information for a file
+      git blame -L 10,20 path/to/file  # Show blame information for lines 10-20
+      git blame -w path/to/file  # Ignore whitespace changes
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    result = await git_blame(arguments, path, chat_id)
+    return result.get("resultForAssistant", "")

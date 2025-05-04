@@ -4,12 +4,16 @@ import logging
 import os
 import pathlib
 
+from mcp.server.fastmcp import Context
+
 from ..common import normalize_file_path
 from ..git import commit_changes, get_repository_root
+from ..main import get_chat_id_from_context, mcp
 from ..shell import run_command
 
 __all__ = [
     "rm_file",
+    "rm_tool",
 ]
 
 
@@ -94,3 +98,21 @@ async def rm_file(
         return f"Successfully removed file {rel_path}."
     else:
         return f"File {rel_path} was removed but failed to commit: {commit_message}"
+
+
+@mcp.tool()
+async def rm_tool(ctx: Context, path: str, description: str) -> str:
+    """Removes a file using git rm and commits the change.
+    Provide a short description of why the file is being removed.
+
+    Before using this tool:
+    1. Ensure the file exists and is tracked by git
+    2. Provide a meaningful description of why the file is being removed
+
+    Args:
+        path: The path to the file to remove (can be relative to the project root or absolute)
+        description: Short description of why the file is being removed
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    return await rm_file(path, description, chat_id)

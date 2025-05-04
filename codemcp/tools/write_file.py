@@ -3,6 +3,8 @@
 import logging
 import os
 
+from mcp.server.fastmcp import Context
+
 from ..code_command import run_formatter_without_commit
 from ..file_utils import (
     check_file_path_and_permissions,
@@ -11,9 +13,11 @@ from ..file_utils import (
 )
 from ..git import commit_changes
 from ..line_endings import detect_line_endings, detect_repo_line_endings
+from ..main import get_chat_id_from_context, mcp
 
 __all__ = [
     "write_file_content",
+    "write_file",
 ]
 
 
@@ -84,3 +88,22 @@ async def write_file_content(
         git_message = f"\nFailed to commit changes to git: {message}"
 
     return f"Successfully wrote to {file_path}{format_message}{git_message}"
+
+
+@mcp.tool()
+async def write_file(
+    ctx: Context, file_path: str, content: str, description: str
+) -> str:
+    """Write a file to the local filesystem. Overwrites the existing file if there is one.
+    Provide a short description of the change.
+
+    Before using this tool:
+
+    1. Use the ReadFile tool to understand the file's contents and context
+
+    2. Directory Verification (only applicable when creating new files):
+       - Use the LS tool to verify the parent directory exists and is the correct location
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    return await write_file_content(file_path, content, description, chat_id)

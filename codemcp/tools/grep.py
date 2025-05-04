@@ -5,8 +5,11 @@ import os
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple
 
+from mcp.server.fastmcp import Context
+
 from ..common import normalize_file_path
 from ..git import is_git_repository
+from ..main import get_chat_id_from_context, mcp
 from ..shell import run_command
 
 __all__ = [
@@ -15,6 +18,7 @@ __all__ = [
     "render_result_for_assistant",
     "TOOL_NAME_FOR_PROMPT",
     "DESCRIPTION",
+    "grep",
 ]
 
 # Define constants
@@ -217,3 +221,23 @@ async def grep_files(
     output["resultForAssistant"] = formatted_result
 
     return output
+
+
+@mcp.tool()
+async def grep(
+    ctx: Context, pattern: str, path: str, include: str | None = None
+) -> str:
+    """Searches for files containing a specified pattern (regular expression) using git grep.
+    Files with a match are returned, up to a maximum of 100 files.
+    Note that this tool only works inside git repositories.
+
+    Example:
+      Grep "function.*hello" /path/to/repo  # Find files containing functions with "hello" in their name
+      Grep "console\\.log" /path/to/repo --include="*.js"  # Find JS files with console.log statements
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    result = await grep_files(pattern, path, include, chat_id)
+    return result.get(
+        "resultForAssistant", f"Found {result.get('numFiles', 0)} file(s)"
+    )

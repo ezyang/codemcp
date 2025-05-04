@@ -2,10 +2,13 @@
 
 import logging
 import shlex
-from typing import Any
+from typing import Any, Optional
+
+from mcp.server.fastmcp import Context
 
 from ..common import normalize_file_path
 from ..git import is_git_repository
+from ..main import get_chat_id_from_context, mcp
 from ..shell import run_command
 
 __all__ = [
@@ -13,6 +16,7 @@ __all__ = [
     "render_result_for_assistant",
     "TOOL_NAME_FOR_PROMPT",
     "DESCRIPTION",
+    "git_show_tool",
 ]
 
 TOOL_NAME_FOR_PROMPT = "GitShow"
@@ -98,3 +102,26 @@ def render_result_for_assistant(output: dict[str, Any]) -> str:
         A formatted string representation of the results
     """
     return output.get("output", "")
+
+
+@mcp.tool()
+async def git_show_tool(
+    ctx: Context, path: str, arguments: Optional[str] = None
+) -> str:
+    """Shows various types of objects (commits, tags, trees, blobs) using git show.
+    This tool is read-only and safe to use with any arguments.
+    The arguments parameter should be a string and will be interpreted as space-separated
+    arguments using shell-style tokenization (spaces separate arguments, quotes can be used
+    for arguments containing spaces, etc.).
+
+    Example:
+      git show  # Show the most recent commit
+      git show a1b2c3d  # Show a specific commit by hash
+      git show HEAD~3  # Show the commit 3 before HEAD
+      git show v1.0  # Show a tag
+      git show HEAD:path/to/file  # Show a file from a specific commit
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    result = await git_show(arguments, path, chat_id)
+    return result.get("resultForAssistant", "")

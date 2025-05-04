@@ -7,12 +7,15 @@ import re
 from typing import Any, Dict, List, Optional
 
 import tomli
+from mcp.server.fastmcp import Context
 
-from ..common import MAX_LINE_LENGTH, MAX_LINES_TO_READ, normalize_file_path
+from ..common import normalize_file_path
 from ..git import get_repository_root, is_git_repository
+from ..main import mcp
 
 __all__ = [
     "init_project",
+    "initialize_project",
 ]
 
 
@@ -206,7 +209,6 @@ async def init_project(
         )
 
         project_prompt = ""
-        command_help = ""
         command_docs: Dict[str, str] = {}
         rules_config: Dict[str, Any] = {}
 
@@ -226,7 +228,7 @@ async def init_project(
 
             # Extract commands and their documentation
             command_list = rules_config.get("commands", {})
-            command_help = ", ".join(command_list.keys())
+            ", ".join(command_list.keys())
 
             # Process command documentation
             for cmd_name, cmd_config in command_list.items():
@@ -240,13 +242,8 @@ async def init_project(
             )
             raise ValueError(f"Error reading codemcp.toml file: {e!s}")
 
-        # Default system prompt, cribbed from claude code
-        # TODO: Figure out if we want Sonnet to make determinations about what
-        # goes in the global prompt.  The current ARCHITECTURE.md rule is
-        # mostly to make sure we don't lose important information that was
-        # conveyed in chats.
-        # TODO: This prompt is pretty long, maybe we want it shorter
-        # NB: If you edit this, also edit codemcp/main.py
+        # Default system prompt - now with most of the tool docs moved to the function docstrings
+        # Keep the non-tool prompts here
         system_prompt = f"""\
 You are an AI assistant that helps users with software engineering tasks. Use the instructions below and the tools available to you to assist the user.
 
@@ -274,237 +271,13 @@ When making changes to files, first understand the file's code conventions. Mimi
 # Tool usage policy
 - If you intend to call multiple tools and there are no dependencies between the calls, make all of the independent calls in the same function_calls block.
 
-# codemcp tool
-The codemcp tool supports a number of subtools which you should use to perform coding tasks.
-
-## GitLog chat_id path arguments?
-
-Shows commit logs using git log.
-This tool is read-only and safe to use with any arguments.
-The arguments parameter should be a string and will be interpreted as space-separated
-arguments using shell-style tokenization (spaces separate arguments, quotes can be used
-for arguments containing spaces, etc.).
-
-Example:
-  git log --oneline -n 5  # Show the last 5 commits in oneline format
-  git log --author="John Doe" --since="2023-01-01"  # Show commits by an author since a date
-  git log -- path/to/file  # Show commit history for a specific file
-
-## GitDiff chat_id path arguments?
-
-Shows differences between commits, commit and working tree, etc. using git diff.
-This tool is read-only and safe to use with any arguments.
-The arguments parameter should be a string and will be interpreted as space-separated
-arguments using shell-style tokenization (spaces separate arguments, quotes can be used
-for arguments containing spaces, etc.).
-
-Example:
-  git diff  # Show changes between working directory and index
-  git diff HEAD~1  # Show changes between current commit and previous commit
-  git diff branch1 branch2  # Show differences between two branches
-  git diff --stat  # Show summary of changes instead of full diff
-
-## GitShow chat_id path arguments?
-
-Shows various types of objects (commits, tags, trees, blobs) using git show.
-This tool is read-only and safe to use with any arguments.
-The arguments parameter should be a string and will be interpreted as space-separated
-arguments using shell-style tokenization (spaces separate arguments, quotes can be used
-for arguments containing spaces, etc.).
-
-Example:
-  git show  # Show the most recent commit
-  git show a1b2c3d  # Show a specific commit by hash
-  git show HEAD~3  # Show the commit 3 before HEAD
-  git show v1.0  # Show a tag
-  git show HEAD:path/to/file  # Show a file from a specific commit
-
-## GitBlame chat_id path arguments?
-
-Shows what revision and author last modified each line of a file using git blame.
-This tool is read-only and safe to use with any arguments.
-The arguments parameter should be a string and will be interpreted as space-separated
-arguments using shell-style tokenization (spaces separate arguments, quotes can be used
-for arguments containing spaces, etc.).
-
-Example:
-  git blame path/to/file  # Show blame information for a file
-  git blame -L 10,20 path/to/file  # Show blame information for lines 10-20
-  git blame -w path/to/file  # Ignore whitespace changes
-
-## ReadFile chat_id path offset? limit?
-
-Reads a file from the local filesystem. The path parameter must be an absolute path, not a relative path. By default, it reads up to {MAX_LINES_TO_READ} lines starting from the beginning of the file. You can optionally specify a line offset and limit (especially handy for long files), but it's recommended to read the whole file by not providing these parameters. Any lines longer than {MAX_LINE_LENGTH} characters will be truncated. For image files, the tool will display the image for you.
-
-## WriteFile chat_id path content description
-
-Write a file to the local filesystem. Overwrites the existing file if there is one.
-Provide a short description of the change.
-
-Before using this tool:
-
-1. Use the ReadFile tool to understand the file's contents and context
-
-2. Directory Verification (only applicable when creating new files):
-   - Use the LS tool to verify the parent directory exists and is the correct location
-
-## EditFile chat_id path old_string new_string description
-
-This is a tool for editing files. For larger edits, use the WriteFile tool to overwrite files.
-Provide a short description of the change.
-
-Before using this tool:
-
-1. Use the ReadFile tool to understand the file's contents and context
-
-2. Verify the directory path is correct (only applicable when creating new files):
-   - Use the LS tool to verify the parent directory exists and is the correct location
-
-To make a file edit, provide the following:
-1. path: The absolute path to the file to modify (must be absolute, not relative)
-2. old_string: The text to replace (must be unique within the file, and must match the file contents exactly, including all whitespace and indentation)
-3. new_string: The edited text to replace the old_string
-
-The tool will replace ONE occurrence of old_string with new_string in the specified file.
-
-CRITICAL REQUIREMENTS FOR USING THIS TOOL:
-
-1. UNIQUENESS: The old_string MUST uniquely identify the specific instance you want to change. This means:
-   - Include AT LEAST 3-5 lines of context BEFORE the change point
-   - Include AT LEAST 3-5 lines of context AFTER the change point
-   - Include all whitespace, indentation, and surrounding code exactly as it appears in the file
-
-2. SINGLE INSTANCE: This tool can only change ONE instance at a time. If you need to change multiple instances:
-   - Make separate calls to this tool for each instance
-   - Each call must uniquely identify its specific instance using extensive context
-
-3. VERIFICATION: Before using this tool:
-   - Check how many instances of the target text exist in the file
-   - If multiple instances exist, gather enough context to uniquely identify each one
-   - Plan separate tool calls for each instance
-
-WARNING: If you do not follow these requirements:
-   - The tool will fail if old_string matches multiple locations
-   - The tool will fail if old_string doesn't match exactly (including whitespace)
-   - You may change the wrong instance if you don't include enough context
-
-When making edits:
-   - Ensure the edit results in idiomatic, correct code
-   - Do not leave the code in a broken state
-   - Always use absolute file paths (starting with /)
-
-Remember: when making multiple file edits in a row to the same file, you should prefer to send all edits in a single message with multiple calls to this tool, rather than multiple messages with a single call each.
-
-## UserPrompt chat_id user_prompt
-
-Records the user's verbatim prompt text for each interaction after the initial one.
-You should call this tool with the user's exact message at the beginning of each response.
-This tool must be called in every response except for the first one where InitProject was used.  Do NOT include documents or other attachments, only the text prompt.
-
-## Think chat_id thought
-
-Use the tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning or some cache memory is needed.
-
-## LS chat_id path
-
-Lists files and directories in a given path. The path parameter must be an absolute path, not a relative path. You should generally prefer the Glob and Grep tools, if you know which directories to search.
-
-## Glob chat_id pattern path
-
-Fast file pattern matching tool that works with any codebase size
-Supports glob patterns like "**/*.js" or "src/**/*.ts"
-Returns matching file paths sorted by modification time
-Use this tool when you need to find files by name patterns
-
-## Grep chat_id pattern path include?
-
-Searches for files containing a specified pattern (regular expression) using git grep.
-Files with a match are returned, up to a maximum of 100 files.
-Note that this tool only works inside git repositories.
-
-Example:
-  Grep "function.*hello" /path/to/repo  # Find files containing functions with "hello" in their name
-  Grep "console\\.log" /path/to/repo --include="*.js"  # Find JS files with console.log statements
-
-## RunCommand chat_id path command arguments?
-
-Runs a command.  This does NOT support arbitrary code execution, ONLY call
-with this set of valid commands: {command_help}
-The arguments parameter should be a string and will be interpreted as space-separated
-arguments using shell-style tokenization (spaces separate arguments, quotes can be used
-for arguments containing spaces, etc.).
-{_generate_command_docs(command_docs)}
-
-## RM chat_id path description
-
-Removes a file using git rm and commits the change.
-Provide a short description of why the file is being removed.
-
-Before using this tool:
-1. Ensure the file exists and is tracked by git
-2. Provide a meaningful description of why the file is being removed
-
-Args:
-    path: The path to the file to remove (can be relative to the project root or absolute)
-    description: Short description of why the file is being removed
-    chat_id: The unique ID to identify the chat session
-
-## MV chat_id source_path target_path description
-
-Moves a file using git mv and commits the change.
-Provide a short description of why the file is being moved.
-
-Before using this tool:
-1. Ensure the source file exists and is tracked by git
-2. Ensure the target directory exists within the git repository
-3. Provide a meaningful description of why the file is being moved
-
-Args:
-    source_path: The path to the file to move (can be relative to the project root or absolute)
-    target_path: The destination path where the file should be moved to (can be relative to the project root or absolute)
-    description: Short description of why the file is being moved
-    chat_id: The unique ID to identify the chat session
-
-## Chmod chat_id path mode
-
-Changes file permissions using chmod. Unlike standard chmod, this tool only supports
-a+x (add executable permission) and a-x (remove executable permission), because these
-are the only bits that git knows how to track.
-
-Args:
-    path: The absolute path to the file to modify
-    mode: The chmod mode to apply, only "a+x" and "a-x" are supported
-    chat_id: The unique ID to identify the chat session
-
-Example:
-  chmod a+x path/to/file  # Makes a file executable by all users
-  chmod a-x path/to/file  # Makes a file non-executable for all users
-
-## Summary
-
-Args:
-    subtool: The subtool to execute (ReadFile, WriteFile, EditFile, LS, InitProject, UserPrompt, RunCommand, RM, MV, Think, Chmod)
-    path: The path to the file or directory to operate on
-    content: Content for WriteFile subtool (any type will be serialized to string if needed)
-    old_string: String to replace for EditFile subtool
-    new_string: Replacement string for EditFile subtool
-    offset: Line offset for ReadFile subtool
-    limit: Line limit for ReadFile subtool
-    description: Short description of the change (for WriteFile/EditFile/RM/MV)
-    source_path: The path to the source file for MV subtool
-    target_path: The destination path for MV subtool
-    arguments: A string containing space-separated arguments for RunCommand subtool
-    user_prompt: The user's verbatim text (for UserPrompt subtool)
-    thought: The thought content (for Think subtool)
-    mode: The chmod mode to apply (a+x or a-x) for Chmod subtool
-    chat_id: A unique ID to identify the chat session (required for all tools EXCEPT InitProject)
-
 # Chat ID and Git tracking
 This chat has been assigned a chat ID: {chat_id}
 When you use any tool, you MUST always include this chat ID as the chat_id parameter.
 
 # Git Commit Hash
 This project uses Git commit hashes to track changes across conversations. After each operation that modifies files, the current Git commit hash will be reported. The commit hash represents the current state of the repository.
+{_generate_command_docs(command_docs)}
 """
 
         # Combine system prompt, global prompt
@@ -518,3 +291,31 @@ This project uses Git commit hashes to track changes across conversations. After
             f"Exception suppressed during project initialization: {e!s}", exc_info=True
         )
         return f"Error initializing project: {e!s}"
+
+
+@mcp.tool()
+async def initialize_project(
+    ctx: Context,
+    file_path: str,
+    user_prompt: str,
+    subject_line: str,
+    reuse_head_chat_id: bool = False,
+) -> str:
+    """If and only if the user explicitly asks you to initialize codemcp with path, you should invoke this tool.
+    This will return instructions which you should IMMEDIATELY follow before continuing, in particular, it will
+    explain other ways you can invoke this tool.
+
+    If the user indicates they want to "amend" or "continue working" on a PR, you should set
+    reuse_head_chat_id=True to continue using the same chat ID.
+
+    In each subsequent request NOT including the initial request to initialize codemcp, you must call
+    the UserPrompt tool with the user's verbatim request text.
+
+    Arguments:
+      file_path: The path to the file or directory to operate on
+      user_prompt: The user's original prompt verbatim, starting AFTER instructions to initialize codemcp (e.g., you should exclude "Initialize codemcp for PATH")
+      subject_line: A short subject line in Git conventional commit format
+      reuse_head_chat_id: If True, reuse the chat ID from the HEAD commit instead of generating a new one
+    """
+    # For init_project, we don't use the context's chat_id, as it generates its own
+    return await init_project(file_path, user_prompt, subject_line, reuse_head_chat_id)

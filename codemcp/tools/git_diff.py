@@ -2,10 +2,13 @@
 
 import logging
 import shlex
-from typing import Any
+from typing import Any, Optional
+
+from mcp.server.fastmcp import Context
 
 from ..common import normalize_file_path
 from ..git import is_git_repository
+from ..main import get_chat_id_from_context, mcp
 from ..shell import run_command
 
 __all__ = [
@@ -13,6 +16,7 @@ __all__ = [
     "render_result_for_assistant",
     "TOOL_NAME_FOR_PROMPT",
     "DESCRIPTION",
+    "git_diff_tool",
 ]
 
 TOOL_NAME_FOR_PROMPT = "GitDiff"
@@ -97,3 +101,25 @@ def render_result_for_assistant(output: dict[str, Any]) -> str:
         A formatted string representation of the results
     """
     return output.get("output", "")
+
+
+@mcp.tool()
+async def git_diff_tool(
+    ctx: Context, path: str, arguments: Optional[str] = None
+) -> str:
+    """Shows differences between commits, commit and working tree, etc. using git diff.
+    This tool is read-only and safe to use with any arguments.
+    The arguments parameter should be a string and will be interpreted as space-separated
+    arguments using shell-style tokenization (spaces separate arguments, quotes can be used
+    for arguments containing spaces, etc.).
+
+    Example:
+      git diff  # Show changes between working directory and index
+      git diff HEAD~1  # Show changes between current commit and previous commit
+      git diff branch1 branch2  # Show differences between two branches
+      git diff --stat  # Show summary of changes instead of full diff
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    result = await git_diff(arguments, path, chat_id)
+    return result.get("resultForAssistant", "")

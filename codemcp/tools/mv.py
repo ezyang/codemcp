@@ -4,12 +4,16 @@ import logging
 import os
 import pathlib
 
+from mcp.server.fastmcp import Context
+
 from ..common import normalize_file_path
 from ..git import commit_changes, get_repository_root
+from ..main import get_chat_id_from_context, mcp
 from ..shell import run_command
 
 __all__ = [
     "mv_file",
+    "mv_tool",
 ]
 
 
@@ -133,3 +137,25 @@ async def mv_file(
         return f"Successfully moved file from {source_rel_path} to {target_rel_path}."
     else:
         return f"File was moved from {source_rel_path} to {target_rel_path} but failed to commit: {commit_message}"
+
+
+@mcp.tool()
+async def mv_tool(
+    ctx: Context, source_path: str, target_path: str, description: str
+) -> str:
+    """Moves a file using git mv and commits the change.
+    Provide a short description of why the file is being moved.
+
+    Before using this tool:
+    1. Ensure the source file exists and is tracked by git
+    2. Ensure the target directory exists within the git repository
+    3. Provide a meaningful description of why the file is being moved
+
+    Args:
+        source_path: The path to the file to move (can be relative to the project root or absolute)
+        target_path: The destination path where the file should be moved to (can be relative to the project root or absolute)
+        description: Short description of why the file is being moved
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    return await mv_file(source_path, target_path, description, chat_id)

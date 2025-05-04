@@ -6,12 +6,16 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from mcp.server.fastmcp import Context
+
 from ..common import normalize_file_path
+from ..main import get_chat_id_from_context, mcp
 
 __all__ = [
     "glob_files",
     "glob",
     "render_result_for_assistant",
+    "glob_tool",
 ]
 
 # Define constants
@@ -188,3 +192,18 @@ async def glob_files(
     output["resultForAssistant"] = render_result_for_assistant(output)
 
     return output
+
+
+@mcp.tool()
+async def glob_tool(ctx: Context, pattern: str, path: str) -> str:
+    """Fast file pattern matching tool that works with any codebase size
+    Supports glob patterns like "**/*.js" or "src/**/*.ts"
+    Returns matching file paths sorted by modification time
+    Use this tool when you need to find files by name patterns
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    result = await glob_files(pattern, path, MAX_RESULTS, 0, chat_id)
+    return result.get(
+        "resultForAssistant", f"Found {result.get('numFiles', 0)} file(s)"
+    )

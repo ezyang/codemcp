@@ -3,10 +3,14 @@
 import shlex
 from typing import Optional
 
+from mcp.server.fastmcp import Context
+
 from ..code_command import get_command_from_config, run_code_command
+from ..main import get_chat_id_from_context, mcp
 
 __all__ = [
     "run_command",
+    "run_command_tool",
 ]
 
 
@@ -44,3 +48,23 @@ async def run_command(
     return await run_code_command(
         project_dir, command, actual_command, f"Auto-commit {command} changes", chat_id
     )
+
+
+@mcp.tool()
+async def run_command_tool(
+    ctx: Context, path: str, command: str, arguments: Optional[str] = None
+) -> str:
+    """Runs a command. This does NOT support arbitrary code execution, ONLY call
+    with this set of valid commands: format, lint, ghstack, typecheck, test, accept
+    The arguments parameter should be a string and will be interpreted as space-separated
+    arguments using shell-style tokenization (spaces separate arguments, quotes can be used
+    for arguments containing spaces, etc.).
+
+    Command documentation:
+    - test: Accepts a pytest-style test selector as an argument to run a specific test.
+    - accept: Updates expecttest failing tests with their new values, akin to running with EXPECTTEST_ACCEPT=1.
+      Accepts a pytest-style test selector as an argument to run a specific test.
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    return await run_command(path, command, arguments, chat_id)

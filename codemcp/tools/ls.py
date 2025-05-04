@@ -4,9 +4,12 @@ import asyncio
 import os
 from typing import List, Optional
 
+from mcp.server.fastmcp import Context
+
 from ..access import check_edit_permission
 from ..common import normalize_file_path
 from ..git import is_git_repository
+from ..main import get_chat_id_from_context, mcp
 
 __all__ = [
     "ls_directory",
@@ -16,6 +19,7 @@ __all__ = [
     "create_file_tree",
     "print_tree",
     "MAX_FILES",
+    "ls",
 ]
 
 MAX_FILES = 1000
@@ -231,3 +235,13 @@ def print_tree(
             result += print_tree(node.children, level + 1, f"{prefix}  ", cwd)
 
     return result
+
+
+@mcp.tool()
+async def ls(ctx: Context, file_path: str) -> str:
+    """Lists files and directories in a given path. The path parameter must be an absolute path, not a relative path.
+    You should generally prefer the Glob and Grep tools, if you know which directories to search.
+    """
+    # Get chat ID from context
+    chat_id = get_chat_id_from_context(ctx)
+    return await ls_directory(file_path, chat_id)
