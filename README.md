@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ezyang-codemcp-badge.png)](https://mseep.ai/app/ezyang-codemcp)
+
 # codemcp
 
 Make Claude Desktop a pair programming assistant by installing codemcp.  With
