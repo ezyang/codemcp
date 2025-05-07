@@ -349,7 +349,9 @@ class MCPEndToEndTestCase(TestCase, unittest.IsolatedAsyncioTestCase):
                     "Session cannot be None when in_process=False"
                 )
                 # Convert subtool name to lowercase snake case (e.g., ReadFile -> read_file)
-                subtool_snake_case = ''.join(['_' + c.lower() if c.isupper() else c for c in subtool]).lstrip('_')
+                subtool_snake_case = "".join(
+                    ["_" + c.lower() if c.isupper() else c for c in subtool]
+                ).lstrip("_")
                 # Call the subtool directly instead of calling the codemcp tool
                 result = await session.call_tool(subtool_snake_case, kwargs)  # type: ignore
                 self.assertTrue(result.isError, result)
@@ -405,7 +407,9 @@ class MCPEndToEndTestCase(TestCase, unittest.IsolatedAsyncioTestCase):
         else:
             assert session is not None, "Session cannot be None when in_process=False"
             # Convert subtool name to lowercase snake case (e.g., ReadFile -> read_file)
-            subtool_snake_case = ''.join(['_' + c.lower() if c.isupper() else c for c in subtool]).lstrip('_')
+            subtool_snake_case = "".join(
+                ["_" + c.lower() if c.isupper() else c for c in subtool]
+            ).lstrip("_")
             # Call the subtool directly instead of calling the codemcp tool
             result = await session.call_tool(subtool_snake_case, kwargs)  # type: ignore
             self.assertFalse(result.isError, result)

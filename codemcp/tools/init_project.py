@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import tomli
 
-from ..common import MAX_LINE_LENGTH, MAX_LINES_TO_READ, normalize_file_path
+from ..common import normalize_file_path
 from ..git import get_repository_root, is_git_repository
 from ..mcp import mcp
 
@@ -219,7 +219,6 @@ async def init_project(
         )
 
         project_prompt = ""
-        command_help = ""
         command_docs: Dict[str, str] = {}
         rules_config: Dict[str, Any] = {}
 
@@ -239,7 +238,7 @@ async def init_project(
 
             # Extract commands and their documentation
             command_list = rules_config.get("commands", {})
-            command_help = ", ".join(command_list.keys())
+            ", ".join(command_list.keys())
 
             # Process command documentation
             for cmd_name, cmd_config in command_list.items():
