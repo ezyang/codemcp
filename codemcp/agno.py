@@ -1,11 +1,12 @@
 import asyncio
 import sys
-from typing import Union
+from typing import Any, NoReturn, Union
 from urllib.parse import quote
 
 import click
-from agno.agent import Agent
-from agno.api.playground import PlaygroundEndpointCreate, create_playground_endpoint
+from agno.agent.agent import Agent
+from agno.api.playground import create_playground_endpoint
+from agno.api.schemas.playground import PlaygroundEndpointCreate
 from agno.cli.console import console
 from agno.cli.settings import agno_cli_settings
 from agno.tools.mcp import MCPTools
@@ -22,8 +23,8 @@ async def serve_playground_app_async(
     host: str = "localhost",
     port: int = 7777,
     reload: bool = False,
-    prefix="/v1",
-    **kwargs,
+    prefix: str = "/v1",
+    **kwargs: Any,
 ):
     import os
     import signal
@@ -60,7 +61,7 @@ async def serve_playground_app_async(
     console.print(panel)
 
     # Define our custom signal handler that exits immediately
-    def handle_exit(sig, frame):
+    def handle_exit(sig: int, frame: Any) -> NoReturn:
         logger.info(
             "Received shutdown signal - exiting immediately without waiting for connections"
         )
@@ -93,7 +94,7 @@ async def serve_playground_app_async(
 async def main(hello_world: bool = False):
     async with MCPTools(f"{sys.executable} -m codemcp") as codemcp:
         # TODO: cli-ify the model
-        from agno.models.anthropic import Claude
+        from agno.models.anthropic.claude import Claude
 
         # from agno.models.google import Gemini
         agent = Agent(

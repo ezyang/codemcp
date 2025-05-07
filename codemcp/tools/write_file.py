@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from typing import Any
 
 from ..code_command import run_formatter_without_commit
 from ..common import normalize_file_path
@@ -24,7 +25,7 @@ __all__ = [
 @mcp.tool()
 async def write_file(
     path: str,
-    content: str | dict | list | None = None,
+    content: str | dict[str, Any] | list[Any] | None = None,
     description: str | None = None,
     chat_id: str | None = None,
     commit_hash: str | None = None,
@@ -68,10 +69,12 @@ async def write_file(
     else:
         content_str = content or ""
 
-    # Normalize newlines
+    # Normalize newlines if content is a string
+    # content_str could be dict/list that was passed directly from the content parameter
+
     content_str = (
         content_str.replace("\r\n", "\n")
-        if isinstance(content_str, str)
+        if isinstance(content_str, str)  # pyright: ignore[reportUnnecessaryIsInstance]
         else content_str
     )
 

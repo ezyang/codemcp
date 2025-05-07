@@ -14,18 +14,10 @@ from starlette.applications import Starlette
 from starlette.routing import Mount
 
 from .mcp import mcp
-from .tools.chmod import chmod  # noqa: F401
-from .tools.edit_file import edit_file  # noqa: F401
-from .tools.glob import glob  # noqa: F401
-from .tools.grep import grep  # noqa: F401
-from .tools.init_project import init_project  # noqa: F401
-from .tools.ls import ls  # noqa: F401
-from .tools.mv import mv  # noqa: F401
-from .tools.read_file import read_file  # noqa: F401
-from .tools.rm import rm  # noqa: F401
-from .tools.run_command import run_command  # noqa: F401
-from .tools.think import think  # noqa: F401
-from .tools.write_file import write_file  # noqa: F401
+
+# pyright: reportUnusedImport=false
+# pylint: disable=unused-import
+# Import tools to register them with MCP - these are used indirectly
 
 
 def get_files_respecting_gitignore(dir_path: Path, pattern: str = "**/*") -> List[Path]:
@@ -44,7 +36,7 @@ def get_files_respecting_gitignore(dir_path: Path, pattern: str = "**/*") -> Lis
     all_dirs = [dir_path] + [p for p in all_paths if p.is_dir()]
 
     # Find all .gitignore files in the directory and subdirectories
-    gitignore_specs = {}
+    gitignore_specs: dict[Path, pathspec.GitIgnoreSpec] = {}
 
     # Process .gitignore files from root to leaf directories
     for directory in sorted(all_dirs, key=lambda d: str(d)):
@@ -268,13 +260,15 @@ def init_codemcp_project(path: str, python: bool = False) -> str:
     files_to_add = []
 
     # Function to replace placeholders in a string
-    def replace_placeholders(text):
+    def replace_placeholders(text: str) -> str:
         for placeholder, value in replacements.items():
             text = text.replace(placeholder, value)
         return text
 
     # Function to process a file from template directory to output directory
-    def process_file(template_file, template_root, output_root):
+    def process_file(
+        template_file: Path, template_root: Path, output_root: Path
+    ) -> Optional[Path]:
         # Get the relative path from template root
         rel_path = template_file.relative_to(template_root)
 
@@ -382,7 +376,9 @@ def init(path: str, python: bool) -> None:
 @click.argument("command", type=str)
 @click.argument("args", nargs=-1)
 @click.option("--path", type=click.Path(), default=".", help="Project directory path")
-def run(command: str, args: tuple, path: str) -> None:
+def run_command_cli(
+    command: str, args: tuple[str, ...], path: str
+) -> None:  # Renamed from run to avoid redeclaration
     """Run a command defined in codemcp.toml without doing git commits.
 
     The command should be defined in the [commands] section of codemcp.toml.
@@ -529,8 +525,9 @@ def run() -> None:
     # Set up a signal handler to exit immediately on Ctrl+C
     import os
     import signal
+    from typing import Any, NoReturn
 
-    def handle_exit(sig, frame):
+    def handle_exit(sig: int, frame: Any) -> NoReturn:
         logging.info(
             "Received shutdown signal - exiting immediately without waiting for connections"
         )
@@ -577,9 +574,10 @@ def serve(host: str, port: int, cors_origin: List[str]) -> None:
 
     import os
     import signal
+    from typing import Any, NoReturn
 
     # Register a custom signal handler that will take precedence and exit immediately
-    def handle_exit(sig, frame):
+    def handle_exit(sig: int, frame: Any) -> NoReturn:
         logging.info(
             "Received shutdown signal - exiting immediately without waiting for connections"
         )

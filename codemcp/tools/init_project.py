@@ -39,7 +39,8 @@ def _slugify(text: str) -> str:
     return text[:50]
 
 
-def _generate_command_docs(command_docs: Dict[str, str]) -> str:
+# pyright: reportUnusedFunction=false
+def _generate_command_docs(command_docs: Dict[str, str]) -> str:  # noqa: F811
     """Generate documentation for commands from the command_docs dictionary.
 
     Args:
