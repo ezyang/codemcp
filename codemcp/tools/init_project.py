@@ -299,7 +299,11 @@ This project uses Git commit hashes to track changes across conversations. After
         if project_prompt:
             combined_prompt += "\n\n" + project_prompt
 
-        return combined_prompt
+        return f"""
+# Chat ID and Git tracking
+This chat has been assigned a chat ID: {chat_id}
+When you use any tool, you MUST always include this chat ID as the chat_id parameter.
+"""
     except Exception as e:
         logging.warning(
             f"Exception suppressed during project initialization: {e!s}", exc_info=True
