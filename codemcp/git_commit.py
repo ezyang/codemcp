@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+from typing import Optional, Tuple
 
 from .git_message import (
     update_commit_message_with_description,
@@ -13,6 +14,7 @@ from .git_query import (
     get_head_commit_message,
     is_git_repository,
 )
+from .git_config import get_git_config_no_commit
 from .shell import run_command
 
 __all__ = ["commit_changes", "create_commit_reference"]
@@ -24,7 +26,7 @@ async def create_commit_reference(
     path: str,
     chat_id: str,
     commit_msg: str,
-) -> tuple[str, str]:
+) -> Tuple[str, str]:  # (message, commit_hash)
     """Create a Git commit without advancing HEAD and store it in a reference.
 
     This function creates a commit using Git plumbing commands and stores it
@@ -159,7 +161,8 @@ async def commit_changes(
     description: str,
     chat_id: str,
     commit_all: bool = False,
-) -> tuple[bool, str]:
+    no_commit: Optional[bool] = None,
+) -> Tuple[bool, str]:  # (success, message)
     """Commit changes to a file, directory, or all files in Git.
 
     This function is a slight misnomer, as we may not actually create a new
@@ -178,18 +181,29 @@ async def commit_changes(
         description: Commit message describing the change
         chat_id: The unique ID of the current chat session
         commit_all: Whether to commit all changes in the repository
+        no_commit: Whether to skip creating a git commit
 
     Returns:
         A tuple of (success, message)
 
     """
+    # If no_commit is None, get the default value from config
+    if no_commit is None:
+        no_commit = get_git_config_no_commit(path)
+    
     log.debug(
-        "commit_changes(%s, %s, %s, commit_all=%s)",
+        "commit_changes(%s, %s, %s, commit_all=%s, no_commit=%s)",
         path,
         description,
         chat_id,
         commit_all,
+        no_commit,
     )
+    
+    # If no_commit is True, skip git operations
+    if no_commit:
+        return True, "Changes saved without git commit (no_commit=True)"
+        
     # First, check if this is a git repository
     if not await is_git_repository(path):
         return False, f"Path '{path}' is not in a Git repository"

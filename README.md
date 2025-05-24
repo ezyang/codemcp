@@ -110,7 +110,19 @@ Initialize codemcp with $PROJECT_DIR
 Where `$PROJECT_DIR` is the path to the project you want to work on.
 
 Then chat with Claude about what changes you want to make to the project.
-Every time codemcp makes a change to your code, it will generate a commit.
+
+### Git Commit Behavior
+
+By default, codemcp will now skip creating git commits when making changes to your code. This allows for faster iterations during development while still maintaining the ability to use git when needed.
+
+You can control this behavior in your `codemcp.toml` file:
+
+```toml
+[git]
+no_commit = true  # Set to false to enable automatic git commits
+```
+
+If you prefer the original behavior where every change generates a commit, set `no_commit = false` in your config.
 
 To see some sample transcripts using this tool, check out:
 
@@ -118,7 +130,7 @@ To see some sample transcripts using this tool, check out:
 - [Fix failing tests](https://claude.ai/share/2b7161ef-5683-4261-ad45-fabc3708f950)
 - [Do a refactor](https://claude.ai/share/f005b43c-a657-43e5-ad9f-4714a5cd746f)
 
-codemcp will generate a commit per chat and amend it as it is working on your feature.
+When git commits are enabled, codemcp will generate a commit per chat and amend it as it is working on your feature.
 
 ## Philosophy
 

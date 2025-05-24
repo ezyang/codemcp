@@ -754,6 +754,7 @@ async def edit_file(
     description: str | None = None,
     chat_id: str | None = None,
     commit_hash: str | None = None,
+    no_commit: bool = True,
 ) -> str:
     """This is a tool for editing files. For larger edits, use the WriteFile tool to overwrite files.
     Provide a short description of the change.
@@ -808,6 +809,7 @@ async def edit_file(
         description: Short description of the change
         chat_id: The unique ID of the current chat session
         commit_hash: Optional Git commit hash for version tracking
+        no_commit: Whether to skip creating a git commit (default: True)
 
     Returns:
         A success message
@@ -840,11 +842,12 @@ async def edit_file(
     if not is_valid:
         raise ValueError(error_message)
 
-    # Handle creating a new file - skip commit_pending_changes for non-existent files
+    # Handle creating a new file
     creating_new_file = old_string == "" and not os.path.exists(full_file_path)
 
-    if not creating_new_file:
-        # Only check commit_pending_changes for existing files
+    # Skip git tracking check if no_commit is True
+    if not creating_new_file and not no_commit:
+        # Only check commit_pending_changes for existing files when we want to commit
         is_tracked, track_error = await check_git_tracking_for_existing_file(
             full_file_path,
             chat_id=chat_id,
@@ -875,8 +878,8 @@ async def edit_file(
         os.makedirs(directory, exist_ok=True)
         await write_text_content(full_file_path, new_string)
 
-        # Commit the changes
-        success, message = await commit_changes(full_file_path, description, chat_id)
+        # Commit the changes (if no_commit is False)
+        success, message = await commit_changes(full_file_path, description, chat_id, no_commit=no_commit)
         git_message = ""
         if success:
             git_message = f"\nChanges committed to git: {description}"
@@ -970,9 +973,9 @@ async def edit_file(
     # Generate a snippet of the edited file to show in the response
     snippet = get_edit_snippet(content, old_string, new_string)
 
-    # Commit the changes
+    # Commit the changes (if no_commit is False)
     git_message = ""
-    success, message = await commit_changes(full_file_path, description, chat_id)
+    success, message = await commit_changes(full_file_path, description, chat_id, no_commit=no_commit)
     if success:
         git_message = f"\n\nChanges committed to git: {description}"
         # Include any extra details like previous commit hash if present in the message
