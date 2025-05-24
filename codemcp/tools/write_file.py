@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from typing import Any, Dict, List, Optional, Union
 
 from ..code_command import run_formatter_without_commit
 from ..common import normalize_file_path
@@ -21,13 +22,15 @@ __all__ = [
 ]
 
 
+# type: ignore
 @mcp.tool()
 async def write_file(
     path: str,
-    content: str | dict | list | None = None,
-    description: str | None = None,
-    chat_id: str | None = None,
-    commit_hash: str | None = None,
+    content: Union[str, Dict[str, Any], List[Any], None] = None,
+    description: Optional[str] = None,
+    chat_id: Optional[str] = None,
+    commit_hash: Optional[str] = None,
+    no_commit: bool = True,
 ) -> str:
     """Write a file to the local filesystem. Overwrites the existing file if there is one.
     Provide a short description of the change.
@@ -45,6 +48,7 @@ async def write_file(
         description: Short description of the change
         chat_id: The unique ID of the current chat session
         commit_hash: Optional Git commit hash for version tracking
+        no_commit: Whether to skip creating a git commit (default: True)
 
     Returns:
         A success message
@@ -111,9 +115,9 @@ async def write_file(
         if not "No format command configured" in formatter_output:
             logging.warning(f"Failed to auto-format {path}: {formatter_output}")
 
-    # Commit the changes
+    # Commit the changes (if no_commit is False)
     git_message = ""
-    success, message = await commit_changes(path, description, chat_id)
+    success, message = await commit_changes(path, description, chat_id, no_commit=no_commit)
     if success:
         git_message = f"\nChanges committed to git: {description}"
     else:
