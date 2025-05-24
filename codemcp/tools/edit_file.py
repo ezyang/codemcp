@@ -842,11 +842,12 @@ async def edit_file(
     if not is_valid:
         raise ValueError(error_message)
 
-    # Handle creating a new file - skip commit_pending_changes for non-existent files
+    # Handle creating a new file
     creating_new_file = old_string == "" and not os.path.exists(full_file_path)
 
-    if not creating_new_file:
-        # Only check commit_pending_changes for existing files
+    # Skip git tracking check if no_commit is True
+    if not creating_new_file and not no_commit:
+        # Only check commit_pending_changes for existing files when we want to commit
         is_tracked, track_error = await check_git_tracking_for_existing_file(
             full_file_path,
             chat_id=chat_id,

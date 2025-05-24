@@ -84,10 +84,11 @@ async def write_file(
     if not is_valid:
         raise ValueError(error_message)
 
-    # Check git tracking for existing files
-    is_tracked, track_error = await check_git_tracking_for_existing_file(path, chat_id)
-    if not is_tracked:
-        raise ValueError(track_error)
+    # Check git tracking for existing files only if we're going to commit
+    if not no_commit and os.path.exists(path):
+        is_tracked, track_error = await check_git_tracking_for_existing_file(path, chat_id)
+        if not is_tracked:
+            raise ValueError(track_error)
 
     # Determine line endings
     old_file_exists = os.path.exists(path)
