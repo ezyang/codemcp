@@ -19,7 +19,8 @@ __all__ = [
 
 @mcp.tool()
 async def rm(
-    path: str, description: str, chat_id: str, commit_hash: Optional[str] = None
+    path: str, description: str, chat_id: str, commit_hash: Optional[str] = None,
+    no_commit: bool = True,
 ) -> str:
     """Removes a file using git rm and commits the change.
     Provide a short description of why the file is being removed.
@@ -33,6 +34,7 @@ async def rm(
         description: Short description of why the file is being removed
         chat_id: The unique ID to identify the chat session
         commit_hash: Optional Git commit hash for version tracking
+        no_commit: Whether to skip creating a git commit (default: True)
 
     Returns:
         A success message
@@ -100,13 +102,14 @@ async def rm(
         text=True,
     )
 
-    # Commit the changes
+    # Commit the changes (if no_commit is False)
     logging.info(f"Committing removal of file: {rel_path}")
     success, commit_message = await commit_changes(
         git_root_resolved,
         f"Remove {rel_path}: {description}",
         chat_id,
         commit_all=False,  # No need for commit_all since git rm already stages the change
+        no_commit=no_commit,
     )
 
     result = ""
