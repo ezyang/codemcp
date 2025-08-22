@@ -1,4 +1,5 @@
 # codemcp
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/ezyang/codemcp)](https://archestra.ai/mcp-catalog/ezyang__codemcp)
 
 Make Claude Desktop a pair programming assistant by installing codemcp.  With
 it, you can directly ask Claude to implement features, fix bugs and do
