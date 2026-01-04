@@ -34,3 +34,6 @@ doc = "Accepts a pytest-style test selector as an argument to run a specific tes
 [commands.accept]
 command = ["env", "EXPECTTEST_ACCEPT=1", "./run_test.sh"]
 doc = "Updates expecttest failing tests with their new values, akin to running with EXPECTTEST_ACCEPT=1. Accepts a pytest-style test selector as an argument to run a specific test."
+
+[git]
+no_commit = true  # Set to false to enable automatic git commits

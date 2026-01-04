@@ -6,7 +6,7 @@ from typing import Any
 
 from ..common import normalize_file_path
 from ..git import commit_changes
-from ..mcp import mcp
+from ..mcp import mcp  # type: ignore # FastMCP instance
 from ..shell import run_command
 from .commit_utils import append_commit_hash
 
@@ -29,12 +29,13 @@ Example:
 """
 
 
-@mcp.tool()
+@mcp.tool()  # type: ignore
 async def chmod(
     path: str,
     mode: str,
     chat_id: str | None = None,
     commit_hash: str | None = None,
+    no_commit: bool = True,
 ) -> str:
     """Changes file permissions using chmod. Unlike standard chmod, this tool only supports
     a+x (add executable permission) and a-x (remove executable permission), because these
@@ -45,6 +46,7 @@ async def chmod(
         mode: The chmod mode to apply, only "a+x" and "a-x" are supported
         chat_id: The unique ID to identify the chat session
         commit_hash: Optional Git commit hash for version tracking
+        no_commit: Whether to skip creating a git commit (default: True)
 
     Example:
       chmod a+x path/to/file  # Makes a file executable by all users
@@ -110,11 +112,12 @@ async def chmod(
         )
         action_msg = f"Removed executable permission from file '{path}'"
 
-    # Commit the changes
+    # Commit the changes (if no_commit is False)
     success, commit_message = await commit_changes(
         directory,
         description,
         chat_id,
+        no_commit=no_commit,
     )
 
     if not success:

@@ -22,6 +22,7 @@ async def mv(
     description: str | None = None,
     chat_id: str | None = None,
     commit_hash: str | None = None,
+    no_commit: bool = True,
 ) -> str:
     """Moves a file using git mv and commits the change.
     Provide a short description of why the file is being moved.
@@ -37,6 +38,7 @@ async def mv(
         description: Short description of why the file is being moved
         chat_id: The unique ID to identify the chat session
         commit_hash: Optional Git commit hash for version tracking
+        no_commit: Whether to skip creating a git commit (default: True)
 
     Returns:
         A string containing the result of the move operation
@@ -135,13 +137,14 @@ async def mv(
         text=True,
     )
 
-    # Commit the changes
+    # Commit the changes (if no_commit is False)
     logging.info(f"Committing move of file: {source_rel_path} -> {target_rel_path}")
     success, commit_message = await commit_changes(
         git_root_resolved,
         f"Move {source_rel_path} -> {target_rel_path}: {description}",
         chat_id,
         commit_all=False,  # No need for commit_all since git mv already stages the change
+        no_commit=no_commit,
     )
 
     result = ""
