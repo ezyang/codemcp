@@ -52,6 +52,10 @@ really don't like, file a bug at
 [refined-claude](https://github.com/ezyang/refined-claude/issues) browser
 extension for supporting auto-approve tool use.
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/ezyang-codemcp).
+
 ## Installation
 
 I recommend this specific way of installing and using codemcp:
