@@ -5,6 +5,8 @@ of agentic coding clis.
 
 # codemcp
 
+[![Protodex Verified](https://img.shields.io/badge/Protodex-Verified_MCP-2DD9E0?style=flat-square&logo=github)](https://protodex.io/servers/ezyang-codemcp.html)
+
 Make Claude Desktop a pair programming assistant by installing codemcp.  With
 it, you can directly ask Claude to implement features, fix bugs and do
 refactors on a codebase on your computer; Claude will directly edit files and
